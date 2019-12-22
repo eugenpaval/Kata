@@ -23,6 +23,7 @@ namespace KataTests
         [TestCase("(0)+ (-1*-9)", ExpectedResult = 9)]
         [TestCase("-3*-(-2+-1) +  9", ExpectedResult = 0)]
         [TestCase("-3*(3)+9", ExpectedResult = 0)]
+        [TestCase("12* 123/-(-5 + 2)", ExpectedResult = 492)]
         public double TestEvaluation(string expression)
         {
             return Evaluator.Evaluate(expression);

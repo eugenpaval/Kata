@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace Kata
 {
@@ -121,58 +120,76 @@ namespace Kata
 
         private static void InternalParse(string expr, bool tokenWasOperator, List<Token> tokens)
         {
-            if (expr.Length == 0)
-                return;
+            var trackParens = new ParensTrack();
 
-            var i = 0;
-
-            if (IsLeadingDigit(expr[0]))
+            for (var i = 0; i < expr.Length;)
             {
-                var start = i;
-                for (; i < expr.Length; ++i)
-                    if (!IsDigitOrComma(expr[i]))
-                        break;
+                var t = expr[i];
 
-                if (double.TryParse(expr.Substring(start, i-start), out var number))
+                if (IsLeadingDigit(expr[i]))
                 {
-                    tokens.Add(new Token(number));
-                    InternalParse(expr.Substring(i), false, tokens);
-                    return;
+                    var start = i;
+                    for (; i < expr.Length; ++i)
+                        if (!IsDigitOrComma(expr[i]))
+                            break;
+
+                    if (double.TryParse(expr.Substring(start, i - start), out var number))
+                    {
+                        tokens.Add(new Token(number));
+                        tokenWasOperator = false;
+
+                        if (trackParens.CheckTracker())
+                        {
+                            tokens.Add(new Token(')'));
+                            tokens.Add(new Token(')'));
+                        }
+                    }
                 }
-            }
-
-            if (expr[0] == '*' || expr[0] == '/')
-            {
-                tokens.Add(new Token(expr[0]));
-                InternalParse(expr.Substring(1), true, tokens);
-                return;}
-            
-            if (expr[0] == '+' || expr[0] == '-')
-            {
-                var sign = Sign(expr, ref i);
-                var op = sign > 0 ? '+' : '-';
-
-                if (tokenWasOperator)
+                else if (t == '*' || t == '/')
                 {
-                    tokens.Add(new Token(sign));
-                    tokens.Add(new Token('*'));
+                    tokens.Add(new Token(t));
+                    tokenWasOperator = true;
+                    ++i;
                 }
-                else
-                    tokens.Add(new Token(op));
+                else if (t == '+' || t == '-')
+                {
+                    var sign = Sign(expr, ref i);
+                    var op = sign > 0 ? '+' : '-';
 
-                InternalParse(expr.Substring(i), true, tokens);
-                return;
-            }
-            
-            if (expr[0] == '(')
-            {
-                tokens.Add(new Token('('));
-                InternalParse(expr.Substring(1), true, tokens);
-            }
-            else if (expr[0] == ')')
-            {
-                tokens.Add(new Token(')'));
-                InternalParse(expr.Substring(1), false, tokens);
+                    if (tokenWasOperator)
+                    {
+                        tokens.Add(new Token('('));
+                        tokens.Add(new Token(sign));
+                        tokens.Add(new Token('*'));
+                        tokens.Add(new Token('('));
+                        
+                        trackParens.AddTracker();
+                    }
+                    else
+                        tokens.Add(new Token(op));
+
+                    tokenWasOperator = true;
+                }
+                else if (t == '(' || t == ')')
+                {
+                    tokens.Add(new Token(t));
+                    if (t == '(')
+                    {
+                        tokenWasOperator = true;
+                        trackParens.Open();
+                    }
+                    else
+                    {
+                        tokenWasOperator = false;
+                        if (trackParens.Close())
+                        {
+                            tokens.Add(new Token(')'));
+                            tokens.Add(new Token(')'));
+                        }
+                    }
+
+                    ++i;
+                }
             }
         }
 
@@ -259,5 +276,45 @@ namespace Kata
         }
         public OperatorType Type { get; }
         public int Priority { get; }
+    }
+
+    public class ParensTrack
+    {
+        private List<int> _parens = new List<int>();
+
+        public void Open()
+        {
+            for (var i = 0; i < _parens.Count; ++i)
+                _parens[i] = ++_parens[i];
+        }
+
+        public void AddTracker()
+        {
+            _parens.Add(0);
+        }
+
+        public bool Close()
+        {
+            for (var i = 0; i < _parens.Count; ++i)
+                _parens[i] = --_parens[i];
+
+            return CheckTracker();
+        }
+
+        public bool CheckTracker()
+        {
+            var i = 0;
+            for (; i < _parens.Count; ++i)
+                if (_parens[i] == 0)
+                    break;
+
+            if (i < _parens.Count)
+            {
+                _parens.RemoveAt(i);
+                return true;
+            }
+
+            return false;
+        }
     }
 }
