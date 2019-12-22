@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Kata
 {
@@ -118,16 +119,15 @@ namespace Kata
             return tokens;
         }
 
-        private static void InternalParse(string expr, bool includeSign, List<Token> tokens)
+        private static void InternalParse(string expr, bool tokenWasOperator, List<Token> tokens)
         {
             if (expr.Length == 0)
                 return;
 
             var i = 0;
 
-            if (IsLeadingDigit(expr[0], includeSign))
+            if (IsLeadingDigit(expr[0]))
             {
-                var sign = Sign(expr, ref i);
                 var start = i;
                 for (; i < expr.Length; ++i)
                     if (!IsDigitOrComma(expr[i]))
@@ -135,36 +135,32 @@ namespace Kata
 
                 if (double.TryParse(expr.Substring(start, i-start), out var number))
                 {
-                    tokens.Add(new Token(sign * number));
+                    tokens.Add(new Token(number));
                     InternalParse(expr.Substring(i), false, tokens);
                     return;
                 }
-
-                if (expr[i] == '(')
-                {
-                    var op = sign > 0 ? '+' : '-';
-                    tokens.Add(new Token(op));
-                    InternalParse(expr.Substring(i), false, tokens);
-                    return;
-                } 
-                
-                throw new Exception($"Invalid expression: [{expr}]");
             }
 
             if (expr[0] == '*' || expr[0] == '/')
             {
                 tokens.Add(new Token(expr[0]));
                 InternalParse(expr.Substring(1), true, tokens);
-                return;
-            }
+                return;}
             
             if (expr[0] == '+' || expr[0] == '-')
             {
                 var sign = Sign(expr, ref i);
                 var op = sign > 0 ? '+' : '-';
 
-                tokens.Add(new Token(op));
-                InternalParse(expr.Substring(i), false, tokens);
+                if (tokenWasOperator)
+                {
+                    tokens.Add(new Token(sign));
+                    tokens.Add(new Token('*'));
+                }
+                else
+                    tokens.Add(new Token(op));
+
+                InternalParse(expr.Substring(i), true, tokens);
                 return;
             }
             
@@ -202,9 +198,9 @@ namespace Kata
             return char.IsDigit(c) || c == '.' || c == ',';
         }
 
-        private static bool IsLeadingDigit(char c, bool includeSign)
+        private static bool IsLeadingDigit(char c)
         {
-            return char.IsDigit(c) || c == '.' || includeSign && (c == '+' || c == '-');
+            return char.IsDigit(c) || c == '.';
         }
 
         protected Token(Operator op)
