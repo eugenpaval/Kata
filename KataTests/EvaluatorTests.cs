@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using Kata;
+﻿using Kata;
 using NUnit.Framework;
 
 namespace KataTests
