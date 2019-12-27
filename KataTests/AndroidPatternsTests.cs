@@ -24,10 +24,10 @@ namespace KataTests
     public class AndroidPatternsSimpleTests
     {
         [Test, Description("Android Patterns - Simple Tests")]
-        [TestCase('A', 3, ExpectedResult = 6)]
+        [TestCase('D', 3, ExpectedResult = 37)]
         public int TestCount(char node, int length)
         {
-            return new AndroidPatterns().Count(node, length);
+            return new AndroidPatterns().CountPatternsFrom(node, length);
         }
     }
 }
