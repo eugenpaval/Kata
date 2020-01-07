@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace KataTests
 {
     [TestFixture]
-    public class BolleanOrderTests
+    public class BooleanOrderTests
     {
         [Test]
         public void SampleTests()

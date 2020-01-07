@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kata", "Kata\Kata.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KataTests", "KataTests\KataTests.csproj", "{51FCB87E-58F2-4C06-A9CC-E234F7B752D3}"
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "SmallestPossibleSum", "SmallestPossibleSum\SmallestPossibleSum.pyproj", "{230A930D-C704-40B0-9092-6375D5F5990E}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PythonKata", "PythonKata\PythonKata.pyproj", "{230A930D-C704-40B0-9092-6375D5F5990E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

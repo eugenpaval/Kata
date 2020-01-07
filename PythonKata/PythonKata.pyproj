@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>230a930d-c704-40b0-9092-6375d5f5990e</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>SmallestPossibleSum.py</StartupFile>
+    <StartupFile>PythonKata</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -14,6 +14,7 @@
     <TestFramework>unittest</TestFramework>
     <UnitTestPattern>test*.py</UnitTestPattern>
     <UnitTestRootDirectory>.</UnitTestRootDirectory>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -24,10 +25,14 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="LongestPalindromicString.py" />
+    <Compile Include="lps2.py" />
+    <Compile Include="Multiples3or5.py" />
     <Compile Include="SmallestPossibleSum.py" />
-    <Compile Include="test_1.py">
+    <Compile Include="test_LongestPalindromicStringTests.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="test_Multiples3or5.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
