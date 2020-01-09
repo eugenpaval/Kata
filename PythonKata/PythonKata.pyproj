@@ -27,12 +27,21 @@
   <ItemGroup>
     <Compile Include="LongestPalindromicString.py" />
     <Compile Include="lps2.py" />
+    <Compile Include="HumanTimeFormat.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Multiples3or5.py" />
     <Compile Include="SmallestPossibleSum.py" />
+    <Compile Include="test_HumanTimeFormat.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test_LongestPalindromicStringTests.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="test_Multiples3or5.py" />
+    <Compile Include="test_SmallestPossibleSum.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
