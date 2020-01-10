@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using Kata;
 
 namespace KataTests
 {
@@ -10,7 +11,7 @@ namespace KataTests
         [TestCase("", null, ExpectedResult = null)]
         public string Test(string a, string b)
         {
-            return Kata.SumStrings.sumStrings(a, b);
+            return SumStrings.sumStrings(a, b);
         }
     }
 }
