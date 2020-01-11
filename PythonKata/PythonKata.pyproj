@@ -25,7 +25,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="class1.py">
+    <Compile Include="PanDigital.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="LongestPalindromicString.py" />
