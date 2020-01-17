@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Kata
 {
-    public class Skyscrapers4v4
+    public class Skyscrapers
     {
         public static int[][] SolvePuzzle(int[] clues)
         {
@@ -13,6 +13,7 @@ namespace Kata
 
     class MatrixPuzzle
     {
+        public const int Dimension = 6;
         public MatrixPuzzle(int[] clues)
         {
             VantagePoints = clues.Select((c, i) => new VantagePoint(i, c)).Where(vp => vp.Clue != 0);
@@ -24,10 +25,12 @@ namespace Kata
         {
             int[][] matrix =
             {
-                new int[4],
-                new int[4],
-                new int[4],
-                new int[4]
+                new int[MatrixPuzzle.Dimension],
+                new int[MatrixPuzzle.Dimension],
+                new int[MatrixPuzzle.Dimension],
+                new int[MatrixPuzzle.Dimension],
+                new int[MatrixPuzzle.Dimension],
+                new int[MatrixPuzzle.Dimension],
             };
 
             BuildMatrix(ref matrix, VantagePoints);
@@ -74,7 +77,7 @@ namespace Kata
             switch (vpType)
             {
                 case VantagePointType.Down:
-                    for (var i = 0; i < 4; ++i)
+                    for (var i = 0; i < MatrixPuzzle.Dimension; ++i)
                     {
                         var mPin = pm[i];
                         if (mPin == 0)
@@ -94,19 +97,19 @@ namespace Kata
                     break;
 
                 case VantagePointType.Right:
-                    for (var j = 3; j >= 0; --j)
+                    for (var j = MatrixPuzzle.Dimension-1; j >= 0; --j)
                     {
-                        var mPin = pm[3-j];
+                        var mPin = pm[MatrixPuzzle.Dimension - 1 - j];
                         if (mPin == 0)
                             continue;
 
-                        if (!matrix.IsRestricted(line, j, 3 - j, pm))
+                        if (!matrix.IsRestricted(line, j, MatrixPuzzle.Dimension - j - 1, pm))
                             matrix[line][j] = mPin;
                         else
                         {
                             success = false;
-                            for (var k = 3; k > j; --k)
-                                if (pm[3 - k] == matrix[line][k])
+                            for (var k = MatrixPuzzle.Dimension-1; k > j; --k)
+                                if (pm[MatrixPuzzle.Dimension -1 - k] == matrix[line][k])
                                     matrix[line][k] = 0;
                             break;
                         }
@@ -114,19 +117,19 @@ namespace Kata
                     break;
 
                 case VantagePointType.Up:
-                    for (var i = 3; i >= 0; --i)
+                    for (var i = MatrixPuzzle.Dimension-1; i >= 0; --i)
                     {
-                        var mPin = pm[3-i];
+                        var mPin = pm[MatrixPuzzle.Dimension - 1 - i];
                         if (mPin == 0)
                             continue;
 
-                        if (!matrix.IsRestricted(i, column, 3 - i, pm))
+                        if (!matrix.IsRestricted(i, column, MatrixPuzzle.Dimension - 1 - i, pm))
                             matrix[i][column] = mPin;
                         else
                         {
                             success = false;
-                            for (var k = 3; k > i; --k)
-                                if (pm[3-k] == matrix[k][column])
+                            for (var k = MatrixPuzzle.Dimension-1; k > i; --k)
+                                if (pm[MatrixPuzzle.Dimension - 1 - k] == matrix[k][column])
                                     matrix[k][column] = 0;
                             break;
                         }
@@ -134,7 +137,7 @@ namespace Kata
                     break;
 
                 case VantagePointType.Left:
-                    for (var j = 0; j < 4; ++j)
+                    for (var j = 0; j < MatrixPuzzle.Dimension; ++j)
                     {
                         var mPin = pm[j];
                         if (mPin == 0)
@@ -194,7 +197,7 @@ namespace Kata
         {
             //var clonedLine = matrix[line].MakeClone();
 
-            for (var k = 0; k < 4; ++k)
+            for (var k = 0; k < MatrixPuzzle.Dimension; ++k)
                 if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, permutation.ToArray()))
                     matrix[line][k] = permutation[k];
 
@@ -215,42 +218,90 @@ namespace Kata
                 0,
                 new[]
                 {
-                    new[] { 0, 0, 0, 0}
+                    new[] {0,0,0,0,0,0}
                 }
             ),
             (
                 1,
                 new[]
                 {
-                    new[] { 4, 0, 0, 0}
+                    new[] {6,0,0,0,0,0}
                 }
             ),
             (
                 2,
                 new[]
                 {
-                    new[] {0, 4, 0, 0},
-                    new[] {2, 1, 4, 3},
-                    new[] {3, 0, 0, 0},
+                    new[] {0,6,0,0,0,0},
+                    new[] {5,0,0,0,0,0},
                 }
             ),
             (
                 3,
                 new[]
                 {
-                    new[] {1, 2, 4, 3},
-                    new[] {1, 3, 4, 2},
-                    new[] {1, 3, 2, 4},
-                    new[] {2, 3, 4, 1},
-                    new[] {2, 1, 3, 4},
-                    new[] {2, 3, 1, 4}
+                    new[] {0,5,6,0,0,0},
+                    new[] {0,5,0,6,0,0},
+                    new[] {0,5,0,0,6,0},
+                    new[] {0,5,0,0,0,6},
+                    new[] {2,1,5,6,0,0},
+                    new[] {2,3,6,0,0,0},
+                    new[] {2,4,6,0,0,0},
+                    new[] {3,0,0,5,6,4},
+                    new[] {3,0,5,4,6,0},
+                    new[] {3,0,5,6,4,0},
+                    new[] {3,0,5,6,0,4},
                 }
             ),
             (
                 4,
                 new[]
                 {
-                    new[] { 1, 2 ,3, 4}
+                    new[] {1,0,5,0,0,6},
+                    new[] {1,0,5,0,6,0},
+                    new[] {1,0,5,6,0,0},
+                    new[] {2,1,0,4,5,6},
+                    new[] {2,1,3,5,0,0},
+                    new[] {2,1,4,3,5,6},
+                    new[] {2,1,4,5,3,6},
+                    new[] {2,1,4,5,6,3},
+                    new[] {2,1,5,0,0,6},
+                    new[] {2,3,5,0,0,6},
+                    new[] {2,3,5,0,6,0},
+                    new[] {2,3,5,6,0,0},
+                    new[] {2,4,5,0,0,6},
+                    new[] {2,4,5,0,6,0},
+                    new[] {2,4,5,6,0,0},
+                    new[] {3,0,0,4,5,6},
+                    new[] {3,0,4,0,5,6},
+                    new[] {3,0,4,5,0,6},
+                    new[] {3,0,4,5,6,0},
+                    new[] {3,4,0,5,6,0},
+                    new[] {3,4,0,5,0,6},
+                    new[] {3,4,5,6,0,0},
+                    new[] {3,4,5,0,0,6},
+                    new[] {3,4,5,0,6,0},
+                    new[] {3,4,5,6,0,0},
+                }
+            ),
+            (
+                5,
+                new[]
+                {
+                    new[] {1,2,3,5,0,6},
+                    new[] {1,2,3,5,6,0},
+                    new[] {2,1,3,4,5,6},
+                    new[] {2,3,1,4,5,6},
+                    new[] {2,3,4,1,5,6},
+                    new[] {2,3,4,5,1,6},
+                    new[] {2,3,4,5,6,1},
+                }
+            ),
+            (
+                6,
+                new[]
+                {
+                    new[] {1,2,3,4,5,6}
                 }
             ),
         };
@@ -261,14 +312,22 @@ namespace Kata
             (0, 1),
             (0, 2),
             (0, 3),
-            (0, 3),
-            (1, 3),
-            (2, 3),
-            (3, 3),
-            (3, 3),
-            (3, 2),
-            (3, 1),
-            (3, 0),
+            (0, 4),
+            (0, 5),
+            (0, 5),
+            (1, 5),
+            (2, 5),
+            (3, 5),
+            (4, 5),
+            (5, 5),
+            (5, 5),
+            (5, 4),
+            (5, 3),
+            (5, 2),
+            (5, 1),
+            (5, 0),
+            (5, 0),
+            (4, 0),
             (3, 0),
             (2, 0),
             (1, 0),
@@ -279,7 +338,7 @@ namespace Kata
         {
             Line = _pos[index].Line;
             Column = _pos[index].Column;
-            VantagePointType = (VantagePointType)(index / 4);
+            VantagePointType = (VantagePointType)(index / MatrixPuzzle.Dimension);
             Clue = value;
         }
 
@@ -318,7 +377,7 @@ namespace Kata
         public static int[] MakeClone(this int[] array)
         {
             var copy = new int[array.Length];
-            for (var i = 0; i < 4; ++i)
+            for (var i = 0; i < MatrixPuzzle.Dimension; ++i)
                 copy[i] = array[i];
 
             return copy;
@@ -355,13 +414,13 @@ namespace Kata
         public static IEnumerable<List<int>> PermutateLine(this int[] pinnedPositions)
         {
             // A zero in pinnedPositions means allowed to permutate otherwise that position will be pinned to the value contained
-            var permutate = new[] {1, 2, 3, 4}.Except(pinnedPositions).Where(v => v != 0).ToList();
+            var permutate = new[] {1, 2, 3, 4, 5, 6}.Except(pinnedPositions).Where(v => v != 0).ToList();
 
             foreach (var p in PermutateNonPinned(permutate))
             {
                 var result = new List<int>();
                 var k = 0;
-                for (var i = 0; i < 4; ++i)
+                for (var i = 0; i < MatrixPuzzle.Dimension; ++i)
                     result.Add(pinnedPositions[i] != 0 ? pinnedPositions[i] : p[k++]);
 
                 yield return result;
