@@ -1,63 +1,173 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Kata
 {
     public class Skyscrapers4v4
     {
-        IEnumerable<VantagePoint> VantagePoints { get; }
-
         public static int[][] SolvePuzzle(int[] clues)
         {
-            var mp = new MatrixPuzzle();
-
-            return mp.PermutateMatrix(clues);
+            return new MatrixPuzzle(clues).PermutateMatrix();
         }
     }
 
     class MatrixPuzzle
     {
-        private readonly int[][] _matrix =
+        public MatrixPuzzle(int[] clues)
         {
-            new int[4],
-            new int[4],
-            new int[4],
-            new int[4]
-        };
-
-        public int[][] PermutateMatrix(int[] clues)
-        {
-            var vpoints = clues.Select((c, i) => new VantagePoint(i, c));
-            return PermutateMatrix(_matrix, vpoints);
+            VantagePoints = clues.Select((c, i) => new VantagePoint(i, c)).Where(vp => vp.Clue != 0);
         }
 
-        private int[][] PermutateMatrix(int[][] matrix, IEnumerable<VantagePoint> vpoints)
-        {
-            if (!vpoints.Any())
-                return matrix;
+        IEnumerable<VantagePoint> VantagePoints { get; }
 
-            foreach (var vp in vpoints)
+        public int[][] PermutateMatrix()
+        {
+            int[][] matrix =
             {
-                if (PermutateVector(matrix, vp))
-                    matrix = PermutateMatrix((int[][])matrix.Clone(), vpoints.Skip(1));
+                new int[4],
+                new int[4],
+                new int[4],
+                new int[4]
+            };
+
+            BuildMatrix(ref matrix, VantagePoints);
+            FinalizeMatrix(matrix);
+
+            return matrix;
+        }
+
+        private bool BuildMatrix(ref int[][] matrix, IEnumerable<VantagePoint> vPoints)
+        {
+            var vp = vPoints.FirstOrDefault();
+
+            if (vp != null)
+            {
+                foreach (var pm in vp.PermutationMasks)
+                {
+                    var originalMatrix = matrix.MakeClone();
+
+                    if (BuildMatrixFrom(ref matrix, pm, vp))
+                        return true;
+
+                    matrix = originalMatrix;
+                }
+
+                return false;
             }
 
-            matrix = FinalizeMatrix(matrix);
-            return matrix;
+            return true;
+        }
 
-            throw new Exception("There is no puzzle solution");
+        private bool BuildMatrixFrom(ref int[][] matrix, int[] pm, VantagePoint vp)
+        {
+            if (PermutateVector(matrix, vp.Line, vp.Column, vp.VantagePointType, pm))
+                return BuildMatrix(ref matrix, VantagePoints.SkipWhile(p => p.Line != vp.Line || p.Column != vp.Column).Skip(1));
+
+            return false;
+        }
+
+        private bool PermutateVector(int[][] matrix, int line, int column, VantagePointType vpType, int[] pm)
+        {
+            var success = true;
+
+            switch (vpType)
+            {
+                case VantagePointType.Down:
+                    for (var i = 0; i < 4; ++i)
+                    {
+                        var mPin = pm[i];
+                        if (mPin == 0)
+                            continue;
+
+                        if (!matrix.IsRestricted(i, column, i, pm))
+                            matrix[i][column] = mPin;
+                        else
+                        {
+                            success = false;
+                            for (var k = 0; k < i; ++k)
+                                if (pm[k] == matrix[k][column])
+                                    matrix[k][column] = 0;
+                            break;
+                        }
+                    }
+                    break;
+
+                case VantagePointType.Right:
+                    for (var j = 3; j >= 0; --j)
+                    {
+                        var mPin = pm[3-j];
+                        if (mPin == 0)
+                            continue;
+
+                        if (!matrix.IsRestricted(line, j, 3 - j, pm))
+                            matrix[line][j] = mPin;
+                        else
+                        {
+                            success = false;
+                            for (var k = 3; k > j; --k)
+                                if (pm[3 - k] == matrix[line][k])
+                                    matrix[line][k] = 0;
+                            break;
+                        }
+                    }
+                    break;
+
+                case VantagePointType.Up:
+                    for (var i = 3; i >= 0; --i)
+                    {
+                        var mPin = pm[3-i];
+                        if (mPin == 0)
+                            continue;
+
+                        if (!matrix.IsRestricted(i, column, 3 - i, pm))
+                            matrix[i][column] = mPin;
+                        else
+                        {
+                            success = false;
+                            for (var k = 3; k > i; --k)
+                                if (pm[3-k] == matrix[k][column])
+                                    matrix[k][column] = 0;
+                            break;
+                        }
+                    }
+                    break;
+
+                case VantagePointType.Left:
+                    for (var j = 0; j < 4; ++j)
+                    {
+                        var mPin = pm[j];
+                        if (mPin == 0)
+                            continue;
+
+                        if (!matrix.IsRestricted(line, j, j, pm))
+                            matrix[line][j] = mPin;
+                        else
+                        {
+                            success = false;
+                            for (var k = 0; k < j; ++k)
+                                if (pm[k] == matrix[line][k])
+                                    matrix[line][k] = 0;
+                            break;
+                        }
+                    }
+                    break;
+            }
+
+            return success;
         }
 
         private int[][] FinalizeMatrix(int[][] matrix, int startLine = 0)
         {
             for (var i = startLine; i < 4; ++i)
             {
-                foreach (var p in matrix[i].PermutateScrapers())
+                foreach (var p in matrix[i].PermutateLine())
                     if (FillMatrixLine(matrix, p, i))
+                    {
+                        matrix = FinalizeMatrix(matrix, ++startLine);
                         break;
+                    }
 
-                matrix = FinalizeMatrix(matrix, ++startLine);
+                matrix = FinalizeMatrix(matrix, --startLine);
             }
 
             return matrix;
@@ -65,10 +175,10 @@ namespace Kata
 
         private static bool FillMatrixLine(int[][] matrix, List<int> permutation, int line)
         {
-            var clonedLine = (int[]) matrix[line].Clone();
+            var clonedLine = matrix[line].MakeClone();
 
             for (var k = 0; k < 4; ++k)
-                if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, matrix[line]))
+                if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, permutation.ToArray()))
                     matrix[line][k] = permutation[k];
 
             var retVal = matrix[line].All(x => x != 0);
@@ -77,61 +187,6 @@ namespace Kata
                 matrix[line] = clonedLine;
 
             return retVal;
-        }
-
-        private bool PermutateVector(int[][] matrix, VantagePoint vp)
-        {
-            foreach (var pm in vp.PermutationMasks)
-            {
-                var posInMask = 0;
-
-                switch (vp.VantagePointType)
-                {
-                    case VantagePointType.Down:
-                        for (var i = 0; i < 4; ++i)
-                        {
-                            if (!matrix.IsRestricted(i, vp.Column, posInMask, pm))
-                                matrix[i][vp.Column] = pm[i];
-                            else
-                                break;
-                        }
-                        break;
-
-                    case VantagePointType.Right:
-                        for (var j = 3; j >= 0; --j)
-                        {
-                            if (!matrix.IsRestricted(vp.Line, j, posInMask, pm))
-                                matrix[vp.Line][j] = pm[3 - j];
-                            else
-                                break;
-                        }
-                        break;
-
-                    case VantagePointType.Up:
-                        for (var i = 3; i >= 0; --i)
-                        {
-                            if (!matrix.IsRestricted(i, vp.Column, posInMask, pm))
-                                matrix[i][vp.Column] = pm[3 - i];
-                            else
-                                break;
-                        }
-                        break;
-
-                    case VantagePointType.Left:
-                        for (var j = 0; j < 4; ++j)
-                        {
-                            if (!matrix.IsRestricted(vp.Line, j, posInMask, pm))
-                                matrix[vp.Line][j] = pm[j];
-                            else
-                                break;
-                        }
-                        break;
-                }
-
-                ++posInMask;
-            }
-
-            return true;
         }
     }
 
@@ -227,14 +282,40 @@ namespace Kata
         Left
     }
 
-    static class MatrixExtensions
+    public static class MatrixExtensions
     {
+        public static int[][] MakeClone(this int[][] matrix)
+        {
+            var copy = new int[matrix.Length][];
+
+            for (var i = 0; i < matrix.Length; ++i)
+            {
+                copy[i] = new int[matrix[i].Length];
+                for (var j = 0; j < copy[i].Length; ++j)
+                    copy[i][j] = matrix[i][j];
+            }
+
+            return copy;
+        }
+
+        public static int[] MakeClone(this int[] array)
+        {
+            var copy = new int[array.Length];
+            for (var i = 0; i < 4; ++i)
+                copy[i] = array[i];
+
+            return copy;
+        }
+
         public static bool IsRestricted(this int[][] matrix, int i, int j, int posInMask, int[] mask)
         {
             var mVal = matrix[i][j];
             var val = mask[posInMask];
 
-            if (mVal == val || mask.IsAllowedByMask(posInMask, val))
+            if (mVal != 0 && mVal != val)
+                return true;
+
+            if (mVal == val || mask.IsAllowedByMask(posInMask, mVal))
                 return false;
 
             if (matrix[i].All(x => x != val) && matrix.Select(lines => lines[j]).All(x => x != val))
@@ -245,44 +326,49 @@ namespace Kata
 
         public static bool IsAllowedByMask(this int[] mask, int pos, int val)
         {
+            if (mask[pos] == 0)
+                return mask.Count(x => x == val) == 0;
+
             if (mask[pos] == val)
                 return true;
-
-            if (mask[pos] == 0)
-                return mask.Count(x => x == val) == 1;
 
             return false;
         }
 
-        public static IEnumerable<List<int>> PermutateScrapers(this int[] pinnedPositions)
+        public static IEnumerable<List<int>> PermutateLine(this int[] pinnedPositions)
         {
             // A zero in pinnedPositions means allowed to permutate otherwise that position will be pinned to the value contained
-            var permutate = new[] { 1, 2, 3, 4 }.Except(pinnedPositions).Where(v => v != 0).ToArray();
-            foreach (var p in PermutateHelper(permutate))
-            {
-                var r = new List<int>(pinnedPositions);
-                for (var (i, j) = (0, 0); i < 4; ++i)
-                    if (r[i] == 0)
-                        r[i] = p[j++];
+            var permutate = new[] {1, 2, 3, 4}.Except(pinnedPositions).Where(v => v != 0).ToList();
 
-                yield return r;
+            foreach (var p in PermutateNonPinned(permutate))
+            {
+                var result = new List<int>();
+                var k = 0;
+                for (var i = 0; i < 4; ++i)
+                    result.Add(pinnedPositions[i] != 0 ? pinnedPositions[i] : p[k++]);
+
+                yield return result;
             }
         }
 
-        private static IEnumerable<List<int>> PermutateHelper(this int[] root)
+        public static IEnumerable<List<int>> PermutateNonPinned(List<int> permutate)
         {
-            if (root.Length == 1)
-                yield return new List<int> { root[0] };
+            if (permutate.Count == 1)
+                yield return permutate;
             else
-                foreach (var s in root)
+            {
+                foreach (var f in permutate)
                 {
-                    var r = new List<int> { s };
-                    foreach (var p in PermutateHelper(root[1..]))
+                    var list = PermutateNonPinned(permutate.Where(e => e != f).ToList());
+
+                    foreach (var l in list)
                     {
-                        r.AddRange(p);
-                        yield return r;
+                        var root = new List<int> {f};
+                        root.AddRange(l);
+                        yield return root;
                     }
                 }
+            }
         }
     }
 }

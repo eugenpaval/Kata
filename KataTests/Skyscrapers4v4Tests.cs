@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using System;
+using System.Linq;
+using NUnit.Framework;
 using Kata;
 
 namespace KataTests
@@ -38,6 +40,20 @@ namespace KataTests
 
             var actual = Skyscrapers4v4.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
+        }
+
+        [Test]
+        public void TestPermutationsWithFixedPositions()
+        {
+            var expected = new[]
+            {
+                new[] {4,1,3,2},
+                new[] {4,2,3,1}
+            };
+
+            var i = 0;
+            foreach (var p in new[] {4,0,3,0}.PermutateLine())
+                CollectionAssert.AreEqual(expected[i++], p);
         }
     }
 }
