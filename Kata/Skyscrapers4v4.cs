@@ -31,7 +31,7 @@ namespace Kata
             };
 
             BuildMatrix(ref matrix, VantagePoints);
-            FinalizeMatrix(matrix);
+            FinalizeMatrix(ref matrix);
 
             return matrix;
         }
@@ -44,12 +44,13 @@ namespace Kata
             {
                 foreach (var pm in vp.PermutationMasks)
                 {
-                    var originalMatrix = matrix.MakeClone();
+                    var matrixCopy = matrix.MakeClone();
 
-                    if (BuildMatrixFrom(ref matrix, pm, vp))
+                    if (BuildMatrixFrom(ref matrixCopy, pm, vp))
+                    {
+                        matrix = matrixCopy;
                         return true;
-
-                    matrix = originalMatrix;
+                    }
                 }
 
                 return false;
@@ -61,7 +62,7 @@ namespace Kata
         private bool BuildMatrixFrom(ref int[][] matrix, int[] pm, VantagePoint vp)
         {
             if (PermutateVector(matrix, vp.Line, vp.Column, vp.VantagePointType, pm))
-                return BuildMatrix(ref matrix, VantagePoints.SkipWhile(p => p.Line != vp.Line || p.Column != vp.Column).Skip(1));
+                return BuildMatrix(ref matrix, VantagePoints.SkipWhile(p => p.Line != vp.Line || p.Column != vp.Column || p.VantagePointType != vp.VantagePointType).Skip(1));
 
             return false;
         }
@@ -156,26 +157,42 @@ namespace Kata
             return success;
         }
 
-        private int[][] FinalizeMatrix(int[][] matrix, int startLine = 0)
+        private void FinalizeMatrix(ref int[][] matrix)
         {
-            for (var i = startLine; i < 4; ++i)
-            {
-                foreach (var p in matrix[i].PermutateLine())
-                    if (FillMatrixLine(matrix, p, i))
-                    {
-                        matrix = FinalizeMatrix(matrix, ++startLine);
-                        break;
-                    }
+            var linesToProcess = matrix.Select((elements, position) => (elements, position)).Where(x => x.elements.Any(e => e == 0)).ToList();
+            FinalizeMatrix(ref matrix, linesToProcess);
+        }
 
-                matrix = FinalizeMatrix(matrix, --startLine);
+        private bool FinalizeMatrix(ref int[][] matrix, IEnumerable<(int[] elements, int position)> linesToProcess)
+        {
+            var line = linesToProcess.FirstOrDefault();
+
+            if (line != default)
+            {
+                var permutations = line.elements.MakeClone();
+                foreach (var p in permutations.PermutateLine())
+                {
+                    var matrixCopy = matrix.MakeClone();
+
+                    if (FillMatrixLine(matrixCopy, p, line.position))
+                    {
+                        if (FinalizeMatrix(ref matrixCopy, linesToProcess.Skip(1)))
+                        {
+                            matrix = matrixCopy;
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
             }
 
-            return matrix;
+            return true;
         }
 
         private static bool FillMatrixLine(int[][] matrix, List<int> permutation, int line)
         {
-            var clonedLine = matrix[line].MakeClone();
+            //var clonedLine = matrix[line].MakeClone();
 
             for (var k = 0; k < 4; ++k)
                 if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, permutation.ToArray()))
@@ -183,8 +200,8 @@ namespace Kata
 
             var retVal = matrix[line].All(x => x != 0);
 
-            if (!retVal)
-                matrix[line] = clonedLine;
+            //if (!retVal)
+            //    matrix[line] = clonedLine;
 
             return retVal;
         }
