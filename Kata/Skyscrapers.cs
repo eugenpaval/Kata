@@ -7,103 +7,132 @@ namespace Kata
     {
         public static int[][] SolvePuzzle(int[] clues)
         {
-            return new MatrixPuzzle().PermutateMatrix();
+            return new MatrixPuzzle(clues).PermutateMatrix();
         }
     }
 
-    class MatrixPuzzle
+    public class MatrixPuzzle
     {
-        public const int Dimension = 6;
+        public const int Dimension = 4;
+
+        public MatrixPuzzle(int[] clues)
+        {
+            _clues = clues;
+        }
+
+        private readonly int[][] _matrix =
+        {
+            new int[MatrixPuzzle.Dimension],
+            new int[MatrixPuzzle.Dimension],
+            new int[MatrixPuzzle.Dimension],
+            new int[MatrixPuzzle.Dimension],
+            //new int[MatrixPuzzle.Dimension],
+            //new int[MatrixPuzzle.Dimension],
+        };
+
+        //private static readonly (int, int)[] _lineClues =
+        //{
+        //    (23, 6),
+        //    (22, 7),
+        //    (21, 8),
+        //    (20, 9),
+        //    (19, 10),
+        //    (18, 11)
+        //};
+
+        //private static readonly (int, int)[] _columnClues =
+        //{
+        //    (0, 17),
+        //    (1, 16),
+        //    (2, 15),
+        //    (3, 14),
+        //    (4, 13),
+        //    (5, 12)
+        //};
+        private static readonly (int, int)[] _lineClues =
+        {
+            (15, 4),
+            (14, 5),
+            (13, 6),
+            (12, 7),
+        };
+
+        private static readonly (int, int)[] _columnClues =
+        {
+            (0, 11),
+            (1, 10),
+            (2, 9),
+            (3, 8),
+        };
+
+        private readonly int[] _clues;
+
+        public (int, int) CluesForLine(int line)
+        {
+            var (x, y) = _lineClues[line];
+            return (_clues[x], _clues[y]);
+        }
+
+        public (int, int) CluesForColumn(int column)
+        {
+            var (x, y) = _columnClues[column];
+            return (_clues[x], _clues[y]);
+        }
+
+        public MatrixIterator GetIterator(int startPosition, bool isLine)
+        {
+            return isLine
+                ? new LineMatrixIterator(this, startPosition) as MatrixIterator
+                : new ColumnMatrixIterator(this, startPosition);
+        }
 
         public int[][] PermutateMatrix()
         {
-            int[][] matrix =
-            {
-                new int[MatrixPuzzle.Dimension],
-                new int[MatrixPuzzle.Dimension],
-                new int[MatrixPuzzle.Dimension],
-                new int[MatrixPuzzle.Dimension],
-                new int[MatrixPuzzle.Dimension],
-                new int[MatrixPuzzle.Dimension],
-            };
+            BuildMatrixLines();
+            FinalizeMatrix();
 
-            BuildMatrixLines(matrix);
-            FinalizeMatrix(ref matrix);
-
-            return matrix;
+            return _matrix;
         }
+        public int[][] Matrix => _matrix;
 
-        private void BuildMatrixLines(int[][] matrix)
+        private void BuildMatrixLines()
         {
-            var columns = matrix.SelectMany(lines => lines.Select(x => x))
+            var columns = _matrix.SelectMany(lines => lines.Select(x => x))
                 .Select((elements, index) => (elements, index))
                 .GroupBy(x => x.index % Dimension, x => x.elements)
-                .Select(x => new {Position = x.Key, Vector = x.ToArray(), Clues = MatrixExtensions.CluesForColumn(x.Key)});
+                .Select(x => new {Position = x.Key, Vector = GetIterator(x.Key, false), Clues = CluesForColumn(x.Key)});
 
-            var vectors = matrix
+            var vectors = _matrix
                 .Select
                 (
                     (elements, position) => new
                     {
-                        Position = position, Vector = matrix[position], Clues = MatrixExtensions.CluesForLine(position)
+                        Position = position, Vector = GetIterator(position, true),
+                        Clues = CluesForLine(position)
                     }
                 )
                 .Union(columns)
-                .Select(x => (x.Position, x.Vector, x.Clues));
+                .Select(x => (x.Position, x.Vector, x.Clues))
+                .Where(x => x.Clues.Item1 != 0 || x.Clues.Item2 != 0);
 
-            BuildMatrix2(matrix, vectors);
+            BuildMatrix2(vectors);
         }
 
-        private bool BuildMatrix2(int[][] matrix, IEnumerable<(int position, int[] permutateVector, (int clue1, int clue2) clues)> clues)
+        private bool BuildMatrix2(IEnumerable<(int position, MatrixIterator matrixVector, (int clue1, int clue2) clues)> clues)
         {
-            var lClue = clues.FirstOrDefault();
+            var clue = clues.FirstOrDefault();
 
-            if (lClue != default)
+            if (clue != default)
             {
-                var permutations = lClue.permutateVector.StartPermutateForClues(lClue.clues.clue1, lClue.clues.clue2);
+                var permutations = clue.matrixVector.ToArray().StartPermutateForClues(clue.clues.clue1, clue.clues.clue2);
                 foreach (var p in permutations)
                 {
-                    if (matrix.IsCompatible(p, lClue.position))
+                    if (clue.matrixVector.CanSetAllValues(p))
                     {
-                        if (BuildMatrix2(matrix, clues.Skip(1)))
-                        {
-                            for (var i = 0; i < Dimension; ++i)
-                                if (matrix[lClue.position][i] != 0)
-                                    matrix[lClue.position][i] = p[i];
-
+                        clue.matrixVector.SetValues(p);
+                        if (BuildMatrix2(clues.Skip(1)))
                             return true;
-                        }
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        private void FinalizeMatrix(ref int[][] matrix)
-        {
-            var linesToProcess = matrix.Select((elements, position) => (elements, position)).Where(x => x.elements.Any(e => e == 0)).ToList();
-            FinalizeMatrix(ref matrix, linesToProcess);
-        }
-
-        private bool FinalizeMatrix(ref int[][] matrix, IEnumerable<(int[] elements, int position)> linesToProcess)
-        {
-            var line = linesToProcess.FirstOrDefault();
-
-            if (line != default)
-            {
-                var permutations = line.elements.MakeClone();
-                foreach (var p in permutations.PermutateLine())
-                {
-                    var matrixCopy = matrix.MakeClone();
-
-                    if (FillMatrixLine(matrixCopy, p, line.position))
-                    {
-                        if (FinalizeMatrix(ref matrixCopy, linesToProcess.Skip(1)))
-                        {
-                            matrix = matrixCopy;
-                            return true;
-                        }
+                        clue.matrixVector.SetValues(new[] { 0, 0, 0, 0 });
                     }
                 }
 
@@ -113,49 +142,43 @@ namespace Kata
             return true;
         }
 
-        private static bool FillMatrixLine(int[][] matrix, List<int> permutation, int line)
+        private void FinalizeMatrix()
         {
-            for (var k = 0; k < MatrixPuzzle.Dimension; ++k)
-                if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, permutation.ToArray()))
-                    matrix[line][k] = permutation[k];
+            var linesToProcess = _matrix.Select((elements, position) => (elements, position)).Where(x => x.elements.Any(e => e == 0)).ToList();
+            FinalizeMatrix(linesToProcess);
+        }
 
-            var retVal = matrix[line].All(x => x != 0);
-            return retVal;
+        private bool FinalizeMatrix(IEnumerable<(int[] elements, int position)> linesToProcess)
+        {
+            var line = linesToProcess.FirstOrDefault();
+
+            if (line != default)
+            {
+                var matrixLineIter = GetIterator(line.position, true);
+                foreach (var p in matrixLineIter.ToArray().StartPermutateForClues(0, 0))
+                {
+                    if (matrixLineIter.CanSetAllValues(p))
+                    {
+                        var lineClone = line.elements.MakeClone();
+                        matrixLineIter.SetValues(p);
+                        
+                        if (FinalizeMatrix(linesToProcess.Skip(1)))
+                            return true;
+                        
+                        for (var i = 0; i < lineClone.Length; ++i)
+                            _matrix[line.position][i] = lineClone[i];
+                    }
+                }
+
+                return false;
+            }
+
+            return true;
         }
     }
 
     public static class MatrixExtensions
     {
-        private static readonly (int, int)[] _lineClues = 
-        {
-            (23, 6),
-            (22, 7),
-            (21, 8),
-            (20, 9),
-            (19, 10),
-            (18, 11)
-        };
-
-        private static readonly (int, int)[] _columnClues = 
-        {
-            (0, 17),
-            (1, 16),
-            (2, 15),
-            (3, 14),
-            (4, 13),
-            (5, 12)
-        };
-
-        public static (int, int) CluesForLine(int line)
-        {
-            return _lineClues[line];
-        }
-
-        public static (int, int) CluesForColumn(int column)
-        {
-            return _columnClues[column];
-        }
-
         public static int[][] MakeClone(this int[][] matrix)
         {
             var copy = new int[matrix.Length][];
@@ -177,34 +200,6 @@ namespace Kata
                 copy[i] = array[i];
 
             return copy;
-        }
-
-        public static bool IsRestricted(this int[][] matrix, int i, int j, int posInMask, int[] mask)
-        {
-            var mVal = matrix[i][j];
-            var val = mask[posInMask];
-
-            if (mVal != 0 && mVal != val)
-                return true;
-
-            if (mVal == val || mask.IsAllowedByMask(posInMask, mVal))
-                return false;
-
-            if (matrix[i].All(x => x != val) && matrix.Select(lines => lines[j]).All(x => x != val))
-                return false;
-
-            return true;
-        }
-
-        public static bool IsAllowedByMask(this int[] mask, int pos, int val)
-        {
-            if (mask[pos] == 0)
-                return mask.Count(x => x == val) == 0;
-
-            if (mask[pos] == val)
-                return true;
-
-            return false;
         }
 
         public static IEnumerable<List<int>> PermutateLine(this int[] pinnedPositions)
@@ -244,20 +239,22 @@ namespace Kata
         }
 
         public static IEnumerable<int[]> StartPermutateForClues(this int[] startingValues, int clue1, int clue2)
-        { 
-            var startingList = new List<int> { 1, 2, 3, 4, 5, 6 }.Except(startingValues).Where(v => v != 0).ToList();
+        {
+            var startingList = new List<int> { 1, 2, 3, 4}.Except(startingValues).Where(v => v != 0).ToList();
 
             var result = startingList.PermutateList()
                 .Select
                 (
-                    p =>
+                    l =>
                     {
-                        var partial = new List<int>(startingList);
-                        for (var (i, k) = (0, 0); i < partial.Count; ++i)
-                            if (partial[i] == 0)
-                                partial[i] = p[k++];
+                        var r = new List<int>(startingValues.Length);
+                        for (var (i, k) = (0, 0); i < r.Capacity; ++i)
+                            if (i < startingValues.Length && startingValues[i] != 0)
+                                r.Add(startingValues[i]);
+                            else
+                                r.Add(l[k++]);
 
-                        return partial;
+                        return r;
                     }
                 );
 
@@ -265,15 +262,7 @@ namespace Kata
                 result = result.Where(l => l.CountVisible() == clue1);
 
             if (clue2 != 0)
-                result = result.Where(l => l.CountVisible(true) == clue2)
-                    .Select
-                    (
-                        l =>
-                        {
-                            l.Reverse();
-                            return l;
-                        }
-                    );
+                result = result.Where(l => l.CountVisible(true) == clue2);
 
             return result.Select(l => l.ToArray());
         }
@@ -312,21 +301,186 @@ namespace Kata
 
             return count;
         }
+    }
 
-        public static bool IsCompatible(this int[][] matrix, int[] permutation, int position, bool column = false)
+    public abstract class MatrixIterator
+    {
+        protected readonly int _startPosition;
+        protected readonly MatrixPuzzle _mp;
+        protected readonly int[][] _matrix;
+
+        protected MatrixIterator(MatrixPuzzle mp, int startPosition)
         {
-            for (var i = 0; i < matrix[position].Length; ++i)
-            {
-                if (matrix[position][i] != 0 && matrix[position][i] != permutation[i])
-                    return false;
+            _mp = mp;
+            _matrix = mp.Matrix;
+            _startPosition = startPosition;
+            Count = _matrix.Length;
+        }
 
-                if (matrix.IsRestricted(position, i, i, permutation))
+        public int Count { get; }
+        public abstract int GetValue(int position);
+        public abstract void SetValue(int position, int value);
+        
+        public int[] ToArray()
+        {
+            var result = new int[_matrix.Length];
+            for (var i = 0; i < _matrix.Length; ++i)
+                result[i] = GetValue(i);
+
+            return result;
+        }
+
+        public abstract bool CanSetValue(int position, int value);
+        public bool CanSetAllValues(int[] permutation)
+        {
+            for (var i = 0; i < Count; ++i)
+                if (!CanSetValue(i, permutation[i]))
                     return false;
-            }
 
             return true;
         }
 
-        public static 
+        public void SetValues(int[] values)
+        {
+            for (var i = 0; i < Count; ++i)
+                SetValue(i, values[i]);
+        }
+
+        public abstract (int i, int j) Coordinates(int i);
+    }
+
+    public class LineMatrixIterator : MatrixIterator
+    {
+        public LineMatrixIterator(MatrixPuzzle mp, int startPosition) : base(mp, startPosition)
+        {
+        }
+
+        public override int GetValue(int position)
+        {
+            return _matrix[_startPosition][position];
+        }
+
+        public override void SetValue(int position, int value)
+        {
+            _matrix[_startPosition][position] = value;
+        }
+
+        public override bool CanSetValue(int position, int value)
+        {
+            var (x, y) = Coordinates(position);
+
+            if (_matrix[x][y] != 0 && _matrix[x][y] != value)
+                return false;
+
+            var (clueLeft, clueRight) = _mp.CluesForColumn(position);
+            var (visLeft, visRight) = (0, 0);
+            var (maxLeft, maxRight) = (0, 0);
+
+            for (var i = 0; i < _matrix[_startPosition].Length; ++i)
+            {
+                var lVal = i != _startPosition ? _matrix[i][y] : value;
+                var rVal = _matrix[_matrix[y].Length - i - 1][position];
+
+                if (_matrix[i][y] == value)
+                    return false;
+
+                if (lVal == 0 || rVal == 0)
+                {
+                    visLeft = -1;
+                    visRight = -1;
+                }
+
+                if (maxLeft < lVal)
+                {
+                    maxLeft = lVal;
+                    if (visLeft != -1)
+                        visLeft++;
+                }
+
+                if (maxRight < rVal)
+                {
+                    maxRight = rVal;
+                    if (visRight != -1)
+                        visRight++;
+                }
+            }
+
+            return (clueLeft == 0 || visLeft == -1 || visLeft == clueLeft) && (clueRight == 0 || visRight == -1 || visRight == clueRight);
+        }
+
+        public override (int i, int j) Coordinates(int i)
+        {
+            return (_startPosition, i);
+        }
+    }
+    
+    public class ColumnMatrixIterator : MatrixIterator
+    {
+        public ColumnMatrixIterator(MatrixPuzzle mp, int startPosition) : base(mp, startPosition)
+        {
+        }
+
+        public override int GetValue(int position)
+        {
+            return _matrix[position][_startPosition];
+        }
+
+        public override void SetValue(int position, int value)
+        {
+            _matrix[position][_startPosition] = value;
+        }
+
+        public override bool CanSetValue(int position, int value)
+        {
+            var (x, y) = Coordinates(position);
+
+            if (_matrix[x][y] != 0 && _matrix[x][y] != value)
+                return false;
+
+            var (clueLeft, clueRight) = _mp.CluesForLine(position);
+            var (visLeft, visRight) = (0, 0);
+            var (maxLeft, maxRight) = (0, 0);
+
+            for (var i = 0; i < _matrix[position].Length; ++i)
+            {
+                var lVal = i != y ? _matrix[x][i] : value;
+                var rVal = _matrix[x][_matrix[x].Length - i - 1];
+
+                if (i == y)
+                {
+                    lVal = value;
+                }
+
+                if (_matrix[x][i] == value)
+                    return false;
+
+                if (lVal == 0 || rVal == 0)
+                {
+                    visLeft = -1;
+                    visRight = -1;
+                }
+
+                if (maxLeft < lVal)
+                {
+                    maxLeft = lVal;
+                    if (visLeft != -1)
+                        visLeft++;
+                }
+
+                if (maxRight < rVal)
+                {
+                    maxRight = rVal;
+                    if (visRight != -1)
+                        visRight++;
+                }
+            }
+
+            return (clueLeft == 0 || visLeft == -1 || visLeft == clueLeft) && (clueRight == 0 || visRight == -1 || visRight == clueRight);
+        }
+
+        public override (int i, int j) Coordinates(int i)
+        {
+            return (i, _startPosition);
+        }
     }
 }

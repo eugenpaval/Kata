@@ -57,5 +57,28 @@ namespace KataTests
             var actual = Skyscrapers.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
+
+        [Test]
+        public void Solve44()
+        {
+            var clues = new []
+            {
+                0, 0, 1, 2,
+                0, 2, 0, 0,
+                0, 3, 0, 0,
+                0, 1, 0, 0
+            };
+
+            var expected = new[]
+            {
+                2, 1, 4, 3,
+                3, 4, 1, 2,
+                4, 2, 3, 1,
+                1, 3, 2, 4
+            };
+
+            var actual = Skyscrapers.SolvePuzzle(clues);
+            CollectionAssert.AreEqual(expected, actual);
+        }
     }
 }
