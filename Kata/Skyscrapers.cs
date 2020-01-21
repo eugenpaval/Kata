@@ -7,19 +7,13 @@ namespace Kata
     {
         public static int[][] SolvePuzzle(int[] clues)
         {
-            return new MatrixPuzzle(clues).PermutateMatrix();
+            return new MatrixPuzzle().PermutateMatrix();
         }
     }
 
     class MatrixPuzzle
     {
         public const int Dimension = 6;
-        public MatrixPuzzle(int[] clues)
-        {
-            VantagePoints = clues.Select((c, i) => new VantagePoint(i, c)).Where(vp => vp.Clue != 0);
-        }
-
-        IEnumerable<VantagePoint> VantagePoints { get; }
 
         public int[][] PermutateMatrix()
         {
@@ -33,131 +27,57 @@ namespace Kata
                 new int[MatrixPuzzle.Dimension],
             };
 
-            BuildMatrix(ref matrix, VantagePoints);
+            BuildMatrixLines(matrix);
             FinalizeMatrix(ref matrix);
 
             return matrix;
         }
 
-        private bool BuildMatrix(ref int[][] matrix, IEnumerable<VantagePoint> vPoints)
+        private void BuildMatrixLines(int[][] matrix)
         {
-            var vp = vPoints.FirstOrDefault();
+            var columns = matrix.SelectMany(lines => lines.Select(x => x))
+                .Select((elements, index) => (elements, index))
+                .GroupBy(x => x.index % Dimension, x => x.elements)
+                .Select(x => new {Position = x.Key, Vector = x.ToArray(), Clues = MatrixExtensions.CluesForColumn(x.Key)});
 
-            if (vp != null)
-            {
-                foreach (var pm in vp.PermutationMasks)
-                {
-                    var matrixCopy = matrix.MakeClone();
-
-                    if (BuildMatrixFrom(ref matrixCopy, pm, vp))
+            var vectors = matrix
+                .Select
+                (
+                    (elements, position) => new
                     {
-                        matrix = matrixCopy;
-                        return true;
+                        Position = position, Vector = matrix[position], Clues = MatrixExtensions.CluesForLine(position)
+                    }
+                )
+                .Union(columns)
+                .Select(x => (x.Position, x.Vector, x.Clues));
+
+            BuildMatrix2(matrix, vectors);
+        }
+
+        private bool BuildMatrix2(int[][] matrix, IEnumerable<(int position, int[] permutateVector, (int clue1, int clue2) clues)> clues)
+        {
+            var lClue = clues.FirstOrDefault();
+
+            if (lClue != default)
+            {
+                var permutations = lClue.permutateVector.StartPermutateForClues(lClue.clues.clue1, lClue.clues.clue2);
+                foreach (var p in permutations)
+                {
+                    if (matrix.IsCompatible(p, lClue.position))
+                    {
+                        if (BuildMatrix2(matrix, clues.Skip(1)))
+                        {
+                            for (var i = 0; i < Dimension; ++i)
+                                if (matrix[lClue.position][i] != 0)
+                                    matrix[lClue.position][i] = p[i];
+
+                            return true;
+                        }
                     }
                 }
-
-                return false;
             }
 
             return true;
-        }
-
-        private bool BuildMatrixFrom(ref int[][] matrix, int[] pm, VantagePoint vp)
-        {
-            if (PermutateVector(matrix, vp.Line, vp.Column, vp.VantagePointType, pm))
-                return BuildMatrix(ref matrix, VantagePoints.SkipWhile(p => p.Line != vp.Line || p.Column != vp.Column || p.VantagePointType != vp.VantagePointType).Skip(1));
-
-            return false;
-        }
-
-        private bool PermutateVector(int[][] matrix, int line, int column, VantagePointType vpType, int[] pm)
-        {
-            var success = true;
-
-            switch (vpType)
-            {
-                case VantagePointType.Down:
-                    for (var i = 0; i < MatrixPuzzle.Dimension; ++i)
-                    {
-                        var mPin = pm[i];
-                        if (mPin == 0)
-                            continue;
-
-                        if (!matrix.IsRestricted(i, column, i, pm))
-                            matrix[i][column] = mPin;
-                        else
-                        {
-                            success = false;
-                            for (var k = 0; k < i; ++k)
-                                if (pm[k] == matrix[k][column])
-                                    matrix[k][column] = 0;
-                            break;
-                        }
-                    }
-                    break;
-
-                case VantagePointType.Right:
-                    for (var j = MatrixPuzzle.Dimension-1; j >= 0; --j)
-                    {
-                        var mPin = pm[MatrixPuzzle.Dimension - 1 - j];
-                        if (mPin == 0)
-                            continue;
-
-                        if (!matrix.IsRestricted(line, j, MatrixPuzzle.Dimension - j - 1, pm))
-                            matrix[line][j] = mPin;
-                        else
-                        {
-                            success = false;
-                            for (var k = MatrixPuzzle.Dimension-1; k > j; --k)
-                                if (pm[MatrixPuzzle.Dimension -1 - k] == matrix[line][k])
-                                    matrix[line][k] = 0;
-                            break;
-                        }
-                    }
-                    break;
-
-                case VantagePointType.Up:
-                    for (var i = MatrixPuzzle.Dimension-1; i >= 0; --i)
-                    {
-                        var mPin = pm[MatrixPuzzle.Dimension - 1 - i];
-                        if (mPin == 0)
-                            continue;
-
-                        if (!matrix.IsRestricted(i, column, MatrixPuzzle.Dimension - 1 - i, pm))
-                            matrix[i][column] = mPin;
-                        else
-                        {
-                            success = false;
-                            for (var k = MatrixPuzzle.Dimension-1; k > i; --k)
-                                if (pm[MatrixPuzzle.Dimension - 1 - k] == matrix[k][column])
-                                    matrix[k][column] = 0;
-                            break;
-                        }
-                    }
-                    break;
-
-                case VantagePointType.Left:
-                    for (var j = 0; j < MatrixPuzzle.Dimension; ++j)
-                    {
-                        var mPin = pm[j];
-                        if (mPin == 0)
-                            continue;
-
-                        if (!matrix.IsRestricted(line, j, j, pm))
-                            matrix[line][j] = mPin;
-                        else
-                        {
-                            success = false;
-                            for (var k = 0; k < j; ++k)
-                                if (pm[k] == matrix[line][k])
-                                    matrix[line][k] = 0;
-                            break;
-                        }
-                    }
-                    break;
-            }
-
-            return success;
         }
 
         private void FinalizeMatrix(ref int[][] matrix)
@@ -195,171 +115,47 @@ namespace Kata
 
         private static bool FillMatrixLine(int[][] matrix, List<int> permutation, int line)
         {
-            //var clonedLine = matrix[line].MakeClone();
-
             for (var k = 0; k < MatrixPuzzle.Dimension; ++k)
                 if (permutation[k] != matrix[line][k] && !matrix.IsRestricted(line, k, k, permutation.ToArray()))
                     matrix[line][k] = permutation[k];
 
             var retVal = matrix[line].All(x => x != 0);
-
-            //if (!retVal)
-            //    matrix[line] = clonedLine;
-
             return retVal;
         }
     }
 
-    class VantagePoint
-    {
-        private static readonly (int Clue, int[][] PinnedPositions)[] _pMasks =
-        {
-            (
-                0,
-                new[]
-                {
-                    new[] {0,0,0,0,0,0}
-                }
-            ),
-            (
-                1,
-                new[]
-                {
-                    new[] {6,0,0,0,0,0}
-                }
-            ),
-            (
-                2,
-                new[]
-                {
-                    new[] {0,6,0,0,0,0},
-                    new[] {5,0,0,0,0,0},
-                }
-            ),
-            (
-                3,
-                new[]
-                {
-                    new[] {0,5,6,0,0,0},
-                    new[] {0,5,0,6,0,0},
-                    new[] {0,5,0,0,6,0},
-                    new[] {0,5,0,0,0,6},
-                    new[] {2,1,5,6,0,0},
-                    new[] {2,3,6,0,0,0},
-                    new[] {2,4,6,0,0,0},
-                    new[] {3,0,0,5,6,4},
-                    new[] {3,0,5,4,6,0},
-                    new[] {3,0,5,6,4,0},
-                    new[] {3,0,5,6,0,4},
-                }
-            ),
-            (
-                4,
-                new[]
-                {
-                    new[] {1,0,5,0,0,6},
-                    new[] {1,0,5,0,6,0},
-                    new[] {1,0,5,6,0,0},
-                    new[] {2,1,0,4,5,6},
-                    new[] {2,1,3,5,0,0},
-                    new[] {2,1,4,3,5,6},
-                    new[] {2,1,4,5,3,6},
-                    new[] {2,1,4,5,6,3},
-                    new[] {2,1,5,0,0,6},
-                    new[] {2,3,5,0,0,6},
-                    new[] {2,3,5,0,6,0},
-                    new[] {2,3,5,6,0,0},
-                    new[] {2,4,5,0,0,6},
-                    new[] {2,4,5,0,6,0},
-                    new[] {2,4,5,6,0,0},
-                    new[] {3,0,0,4,5,6},
-                    new[] {3,0,4,0,5,6},
-                    new[] {3,0,4,5,0,6},
-                    new[] {3,0,4,5,6,0},
-                    new[] {3,4,0,5,6,0},
-                    new[] {3,4,0,5,0,6},
-                    new[] {3,4,5,6,0,0},
-                    new[] {3,4,5,0,0,6},
-                    new[] {3,4,5,0,6,0},
-                    new[] {3,4,5,6,0,0},
-                }
-            ),
-            (
-                5,
-                new[]
-                {
-                    new[] {1,2,3,5,0,6},
-                    new[] {1,2,3,5,6,0},
-                    new[] {2,1,3,4,5,6},
-                    new[] {2,3,1,4,5,6},
-                    new[] {2,3,4,1,5,6},
-                    new[] {2,3,4,5,1,6},
-                    new[] {2,3,4,5,6,1},
-                }
-            ),
-            (
-                6,
-                new[]
-                {
-                    new[] {1,2,3,4,5,6}
-                }
-            ),
-        };
-
-        private static readonly (int Line, int Column)[] _pos =
-        {
-            (0, 0),
-            (0, 1),
-            (0, 2),
-            (0, 3),
-            (0, 4),
-            (0, 5),
-            (0, 5),
-            (1, 5),
-            (2, 5),
-            (3, 5),
-            (4, 5),
-            (5, 5),
-            (5, 5),
-            (5, 4),
-            (5, 3),
-            (5, 2),
-            (5, 1),
-            (5, 0),
-            (5, 0),
-            (4, 0),
-            (3, 0),
-            (2, 0),
-            (1, 0),
-            (0, 0)
-        };
-
-        public VantagePoint(int index, int value)
-        {
-            Line = _pos[index].Line;
-            Column = _pos[index].Column;
-            VantagePointType = (VantagePointType)(index / MatrixPuzzle.Dimension);
-            Clue = value;
-        }
-
-        public int Column { get; }
-        public int Line { get; }
-        public VantagePointType VantagePointType { get; }
-        public int Clue { get; }
-
-        public IEnumerable<int[]> PermutationMasks => _pMasks[Clue].PinnedPositions;
-    }
-
-    enum VantagePointType
-    {
-        Down,
-        Right,
-        Up,
-        Left
-    }
-
     public static class MatrixExtensions
     {
+        private static readonly (int, int)[] _lineClues = 
+        {
+            (23, 6),
+            (22, 7),
+            (21, 8),
+            (20, 9),
+            (19, 10),
+            (18, 11)
+        };
+
+        private static readonly (int, int)[] _columnClues = 
+        {
+            (0, 17),
+            (1, 16),
+            (2, 15),
+            (3, 14),
+            (4, 13),
+            (5, 12)
+        };
+
+        public static (int, int) CluesForLine(int line)
+        {
+            return _lineClues[line];
+        }
+
+        public static (int, int) CluesForColumn(int column)
+        {
+            return _columnClues[column];
+        }
+
         public static int[][] MakeClone(this int[][] matrix)
         {
             var copy = new int[matrix.Length][];
@@ -446,5 +242,91 @@ namespace Kata
                 }
             }
         }
+
+        public static IEnumerable<int[]> StartPermutateForClues(this int[] startingValues, int clue1, int clue2)
+        { 
+            var startingList = new List<int> { 1, 2, 3, 4, 5, 6 }.Except(startingValues).Where(v => v != 0).ToList();
+
+            var result = startingList.PermutateList()
+                .Select
+                (
+                    p =>
+                    {
+                        var partial = new List<int>(startingList);
+                        for (var (i, k) = (0, 0); i < partial.Count; ++i)
+                            if (partial[i] == 0)
+                                partial[i] = p[k++];
+
+                        return partial;
+                    }
+                );
+
+            if (clue1 != 0)
+                result = result.Where(l => l.CountVisible() == clue1);
+
+            if (clue2 != 0)
+                result = result.Where(l => l.CountVisible(true) == clue2)
+                    .Select
+                    (
+                        l =>
+                        {
+                            l.Reverse();
+                            return l;
+                        }
+                    );
+
+            return result.Select(l => l.ToArray());
+        }
+
+        public static IEnumerable<List<int>> PermutateList(this List<int> current)
+        {
+            if (current.Count == 0)
+                yield return current;
+
+            foreach (var e in current)
+            {
+                foreach (var p in current.Where(x => x != e).ToList().PermutateList())
+                {
+                    var result = new List<int> { e };
+                    result.AddRange(p);
+
+                    yield return result;
+                }
+            }
+        }
+
+        public static int CountVisible(this List<int> list, bool reversed = false)
+        {
+            var (count, max) = (0, 0);
+            var (start, increment) = reversed ? (list.Count - 1, -1) : (0, 1);
+            var iter = 0;
+
+            for (var i = start; iter++ < list.Count; i += increment)
+            {
+                if (max < list[i])
+                {
+                    max = list[i];
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
+        public static bool IsCompatible(this int[][] matrix, int[] permutation, int position, bool column = false)
+        {
+            for (var i = 0; i < matrix[position].Length; ++i)
+            {
+                if (matrix[position][i] != 0 && matrix[position][i] != permutation[i])
+                    return false;
+
+                if (matrix.IsRestricted(position, i, i, permutation))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public static 
     }
 }
