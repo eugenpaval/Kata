@@ -320,7 +320,13 @@ namespace Kata
         public int Count { get; }
         public abstract int GetValue(int position);
         public abstract void SetValue(int position, int value);
-        
+
+        public IEnumerable<int> AsEnumerable()
+        {
+            for (var i = 0; i < Count; ++i)
+                yield return GetValue(i);
+        }
+
         public int[] ToArray()
         {
             var result = new int[_matrix.Length];
@@ -347,6 +353,18 @@ namespace Kata
         }
 
         public abstract (int i, int j) Coordinates(int i);
+
+        protected IEnumerable<int> VirtualMatrixLine(int line, int index, int value)
+        {
+            for (var i = 0; i < _matrix[line].Length; ++i)
+                yield return i != index ? _matrix[line][i] : value;
+        }
+
+        protected IEnumerable<int> VirtualMatrixColumn(int column, int index, int value)
+        {
+            for (var i = 0; i < _matrix.Length; ++i)
+                yield return i != index ? _matrix[i][column] : value;
+        }
     }
 
     public class LineMatrixIterator : MatrixIterator
@@ -367,45 +385,40 @@ namespace Kata
 
         public override bool CanSetValue(int position, int value)
         {
+            // where is the value to be placed?
             var (x, y) = Coordinates(position);
 
+            // matrix needs either an empty (0) or same value present at those coordinates
             if (_matrix[x][y] != 0 && _matrix[x][y] != value)
                 return false;
+            
+            if (_matrix[x][y] == value)
+                return true;
 
-            var (clueLeft, clueRight) = _mp.CluesForColumn(position);
-            var (visLeft, visRight) = (0, 0);
-            var (maxLeft, maxRight) = (0, 0);
-
-            for (var i = 0; i < _matrix[_startPosition].Length; ++i)
-            {
-                var lVal = i != _startPosition ? _matrix[i][y] : value;
-                var rVal = _matrix[_matrix[y].Length - i - 1][position];
-
-                if (_matrix[i][y] == value)
+            // the new value must be unique on row x and column y if matrix is empty at x,y
+            if (_matrix[x][y] == 0)
+                if (VirtualMatrixLine(x, y, _matrix[x][y]).Any(v => v == value)
+                    || VirtualMatrixColumn(y, x, _matrix[x][y]).Any(v => v == value))
                     return false;
 
-                if (lVal == 0 || rVal == 0)
-                {
-                    visLeft = -1;
-                    visRight = -1;
-                }
+            // visibility related to clues
+            var (clueL, clueR) = _mp.CluesForColumn(position);
+            if (clueL != 0 || clueR != 0)
+            {
+                var mc = VirtualMatrixColumn(y, x, value).ToList();
+                var lineContainsEmpty = mc.Any(v => v == 0);
 
-                if (maxLeft < lVal)
+                if (!lineContainsEmpty)
                 {
-                    maxLeft = lVal;
-                    if (visLeft != -1)
-                        visLeft++;
-                }
+                    if (clueL != 0 && mc.CountVisible() != clueL)
+                        return false;
 
-                if (maxRight < rVal)
-                {
-                    maxRight = rVal;
-                    if (visRight != -1)
-                        visRight++;
+                    if (clueR != 0 && mc.CountVisible(true) != clueR)
+                        return false;
                 }
             }
 
-            return (clueLeft == 0 || visLeft == -1 || visLeft == clueLeft) && (clueRight == 0 || visRight == -1 || visRight == clueRight);
+            return true;
         }
 
         public override (int i, int j) Coordinates(int i)
@@ -432,52 +445,41 @@ namespace Kata
 
         public override bool CanSetValue(int position, int value)
         {
+            // where is the value to be placed?
             var (x, y) = Coordinates(position);
 
+            // matrix needs either an empty (0) or same value present at those coordinates
             if (_matrix[x][y] != 0 && _matrix[x][y] != value)
                 return false;
 
-            var (clueLeft, clueRight) = _mp.CluesForLine(position);
-            var (visLeft, visRight) = (0, 0);
-            var (maxLeft, maxRight) = (0, 0);
+            if (_matrix[x][y] == value)
+                return true;
 
-            for (var i = 0; i < _matrix[position].Length; ++i)
-            {
-                var lVal = i != y ? _matrix[x][i] : value;
-                var rVal = _matrix[x][_matrix[x].Length - i - 1];
-
-                if (i == y)
-                {
-                    lVal = value;
-                }
-
-                if (_matrix[x][i] == value)
+            // the new value must be unique on row x and column y if matrix is empty at x,y
+            if (_matrix[x][y] == 0)
+                if (VirtualMatrixLine(x, y, _matrix[x][y]).Any(v => v == value) 
+                    || VirtualMatrixColumn(y, x, _matrix[x][y]).Any(v => v == value))
                     return false;
 
-                if (lVal == 0 || rVal == 0)
-                {
-                    visLeft = -1;
-                    visRight = -1;
-                }
+            // visibility related to clues
+            var (clueL, clueR) = _mp.CluesForLine(position);
+            if (clueL != 0 || clueR != 0)
+            {
+                var ml = VirtualMatrixLine(x, y, value).ToList();
+                var lineContainsEmpty = ml.Any(v => v == 0);
 
-                if (maxLeft < lVal)
+                if (!lineContainsEmpty)
                 {
-                    maxLeft = lVal;
-                    if (visLeft != -1)
-                        visLeft++;
-                }
+                    if (clueL != 0 && ml.CountVisible() != clueL)
+                        return false;
 
-                if (maxRight < rVal)
-                {
-                    maxRight = rVal;
-                    if (visRight != -1)
-                        visRight++;
+                    if (clueR != 0 && ml.CountVisible(true) != clueR)
+                        return false;
                 }
             }
 
-            return (clueLeft == 0 || visLeft == -1 || visLeft == clueLeft) && (clueRight == 0 || visRight == -1 || visRight == clueRight);
+            return true;
         }
-
         public override (int i, int j) Coordinates(int i)
         {
             return (i, _startPosition);
