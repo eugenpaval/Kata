@@ -13,7 +13,9 @@ namespace Kata
 
     public class MatrixPuzzle
     {
-        public const int Dimension = 4;
+        public const int Dimension = 6;
+        public static readonly int[] Zero = { 0, 0, 0, 0, 0, 0 };
+        public static readonly int[] Root = { 1, 2, 3, 4, 5, 6 };
 
         public MatrixPuzzle(int[] clues)
         {
@@ -22,48 +24,48 @@ namespace Kata
 
         private readonly int[][] _matrix =
         {
-            new int[MatrixPuzzle.Dimension],
-            new int[MatrixPuzzle.Dimension],
-            new int[MatrixPuzzle.Dimension],
-            new int[MatrixPuzzle.Dimension],
-            //new int[MatrixPuzzle.Dimension],
-            //new int[MatrixPuzzle.Dimension],
+            new int[Dimension],
+            new int[Dimension],
+            new int[Dimension],
+            new int[Dimension],
+            new int[Dimension],
+            new int[Dimension],
         };
 
-        //private static readonly (int, int)[] _lineClues =
-        //{
-        //    (23, 6),
-        //    (22, 7),
-        //    (21, 8),
-        //    (20, 9),
-        //    (19, 10),
-        //    (18, 11)
-        //};
-
-        //private static readonly (int, int)[] _columnClues =
-        //{
-        //    (0, 17),
-        //    (1, 16),
-        //    (2, 15),
-        //    (3, 14),
-        //    (4, 13),
-        //    (5, 12)
-        //};
         private static readonly (int, int)[] _lineClues =
         {
-            (15, 4),
-            (14, 5),
-            (13, 6),
-            (12, 7),
+            (23, 6),
+            (22, 7),
+            (21, 8),
+            (20, 9),
+            (19, 10),
+            (18, 11)
         };
 
         private static readonly (int, int)[] _columnClues =
         {
-            (0, 11),
-            (1, 10),
-            (2, 9),
-            (3, 8),
+            (0, 17),
+            (1, 16),
+            (2, 15),
+            (3, 14),
+            (4, 13),
+            (5, 12)
         };
+        //private static readonly (int, int)[] _lineClues =
+        //{
+        //    (15, 4),
+        //    (14, 5),
+        //    (13, 6),
+        //    (12, 7),
+        //};
+
+        //private static readonly (int, int)[] _columnClues =
+        //{
+        //    (0, 11),
+        //    (1, 10),
+        //    (2, 9),
+        //    (3, 8),
+        //};
 
         private readonly int[] _clues;
 
@@ -132,7 +134,7 @@ namespace Kata
                         clue.matrixVector.SetValues(p);
                         if (BuildMatrix2(clues.Skip(1)))
                             return true;
-                        clue.matrixVector.SetValues(new[] { 0, 0, 0, 0 });
+                        clue.matrixVector.SetValues(Zero);
                     }
                 }
 
@@ -179,20 +181,6 @@ namespace Kata
 
     public static class MatrixExtensions
     {
-        public static int[][] MakeClone(this int[][] matrix)
-        {
-            var copy = new int[matrix.Length][];
-
-            for (var i = 0; i < matrix.Length; ++i)
-            {
-                copy[i] = new int[matrix[i].Length];
-                for (var j = 0; j < copy[i].Length; ++j)
-                    copy[i][j] = matrix[i][j];
-            }
-
-            return copy;
-        }
-
         public static int[] MakeClone(this int[] array)
         {
             var copy = new int[array.Length];
@@ -202,45 +190,9 @@ namespace Kata
             return copy;
         }
 
-        public static IEnumerable<List<int>> PermutateLine(this int[] pinnedPositions)
-        {
-            // A zero in pinnedPositions means allowed to permutate otherwise that position will be pinned to the value contained
-            var permutate = new[] {1, 2, 3, 4, 5, 6}.Except(pinnedPositions).Where(v => v != 0).ToList();
-
-            foreach (var p in PermutateNonPinned(permutate))
-            {
-                var result = new List<int>();
-                var k = 0;
-                for (var i = 0; i < MatrixPuzzle.Dimension; ++i)
-                    result.Add(pinnedPositions[i] != 0 ? pinnedPositions[i] : p[k++]);
-
-                yield return result;
-            }
-        }
-
-        public static IEnumerable<List<int>> PermutateNonPinned(List<int> permutate)
-        {
-            if (permutate.Count == 1)
-                yield return permutate;
-            else
-            {
-                foreach (var f in permutate)
-                {
-                    var list = PermutateNonPinned(permutate.Where(e => e != f).ToList());
-
-                    foreach (var l in list)
-                    {
-                        var root = new List<int> {f};
-                        root.AddRange(l);
-                        yield return root;
-                    }
-                }
-            }
-        }
-
         public static IEnumerable<int[]> StartPermutateForClues(this int[] startingValues, int clue1, int clue2)
         {
-            var startingList = new List<int> { 1, 2, 3, 4}.Except(startingValues).Where(v => v != 0).ToList();
+            var startingList = MatrixPuzzle.Root.Except(startingValues).Where(v => v != 0).ToList();
 
             var result = startingList.PermutateList()
                 .Select
