@@ -13,7 +13,7 @@ namespace MoreTestingForKatas
                 Console.WriteLine();
                 Console.Write("Clues> ");
                 var clues = Console.ReadLine().Split(new[] {',', ' ', ';'}).Select(s => int.Parse(s)).ToList();
-                var result = new [] {0,0,1,0}.StartPermutateForClues(clues[0], clues[1]);
+                var result = new [] {0,0,0,0}.StartPermutateForClues(clues[0], clues[1]);
                 
                 var i = 0;
                 foreach (var p in result)
@@ -26,32 +26,6 @@ namespace MoreTestingForKatas
                 }
             }
         }
-
-        //public static IEnumerable<int[]> PermutateForClues(int clue1, int clue2)
-        //{
-        //    var startingList = new List<int> {1, 2, 3, 4, 5, 6};
-        //    IEnumerable<List<int>> result;
-
-        //    if (clue1 != 0 && clue2 != 0)
-        //        result = startingList.PermutateForClues(clue1, clue2);
-        //    else if (clue1 != 0 && clue2 == 0)
-        //        result = startingList.PermutateForClue(clue1);
-        //    else if (clue1 == 0 && clue2 != 0)
-        //        result = startingList.PermutateForClue(clue2)
-        //            .Select
-        //            (
-        //                l =>
-        //                {
-        //                    l.Reverse();
-        //                    return l;
-        //                }
-        //            );
-        //    else
-        //        result = startingList.PermutateForClue();
-
-        //    return result.Select(l => l.ToArray());
-        //}
-        
     }
 
     static class Extensions
