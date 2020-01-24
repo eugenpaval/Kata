@@ -77,7 +77,7 @@ namespace KataTests
                 new[] {1, 3, 2, 4}
             };
 
-            var actual = Skyscrapers.SolvePuzzle(clues);
+            var actual = SkyscrapersDyn.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
     }

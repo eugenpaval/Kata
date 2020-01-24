@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace Kata
 {
-    class SkyscrapersDyn
+    public class SkyscrapersDyn
     {
         public static int[][] SolvePuzzle(int[] clues)
         {
@@ -14,7 +15,7 @@ namespace Kata
 
     internal class Board
     {
-        public const string AllPossibilities = "123456";
+        public const string AllPossibilities = "1234";
 
         private readonly string[] _board;
 
@@ -37,7 +38,7 @@ namespace Kata
                 for (var j = 0; j < size; ++j)
                 {
                     var pColumn = _permutations[CluesForColumn(j)];
-                    SetBoardValue(i * size + j, Intersection(pLine, pColumn, i, j));
+                    _board[i * size + j] = Intersection(pLine, pColumn, i, j);
                 }
             }
         }
@@ -58,7 +59,10 @@ namespace Kata
 
         private void SetBoardValue(int position, string possibility)
         {
-            var value = _board[position].Select(c => c).Intersect(possibility).ToString();
+            var value = _board[position]
+                .Select(c => c)
+                .Intersect(possibility)
+                .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c), sb => sb.ToString());
             var work = new Queue<(int position, string value)>();
 
             if (value.Length > 1)
@@ -82,14 +86,14 @@ namespace Kata
 
                 for (var i = l * AllPossibilities.Length; i < (l + 1) * AllPossibilities.Length; ++i)
                 {
-                    _board[i] = _board[i].Replace(possibility, "");
+                    _board[i] = _board[i].Replace(value, "");
                     if (_board[i].Length == 1)
                         work.Enqueue((i, _board[i]));
                 }
 
-                for (var i = c * AllPossibilities.Length; i < (c + 1) * AllPossibilities.Length; i += AllPossibilities.Length)
+                for (var i = c; i <  AllPossibilities.Length; i += AllPossibilities.Length)
                 {
-                    _board[i] = _board[i].Replace(possibility, "");
+                    _board[i] = _board[i].Replace(value, "");
                     if (_board[i].Length == 1)
                         work.Enqueue((i, _board[i]));
                 }
@@ -185,10 +189,12 @@ namespace Kata
 
         private string Intersection(IEnumerable<string> pLine, IEnumerable<string> pColumn, int line, int column)
         {
-            var lineC = pLine.Select(p => p[column]).Distinct();
-            var columnC = pColumn.Select(p => p[line]).Distinct();
+            var lineC = pLine.Select(p => p[column]);
+            var columnC = pColumn.Select(p => p[line]);
 
-            return lineC.Intersect(columnC).Aggregate(new StringBuilder(), (sb, c) => sb.Append(c), sb => sb.ToString());
+            return lineC.Intersect(columnC)
+                .OrderBy(c => c)
+                .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c), sb => sb.ToString());
         }
 
         public Board Clone()
@@ -198,7 +204,7 @@ namespace Kata
 
         public IEnumerable<(int position, string possibilities)> GetPossibilities()
         {
-            return _board.Select((value, index) => (index, value)).OrderByDescending(v => v.value.Length);
+            return _board.Select((value, index) => (index, value)).OrderBy(v => v.value.Length);
         }
     }
 
@@ -216,12 +222,13 @@ namespace Kata
 
         public Permutations()
         {
+            var zero = new int[Root.Length];
             for (var i = 0; i <= Root.Length; ++i)
                 for (var j = 0; j <= Root.Length; ++j)
-                    _permutations.Add((i, j), StartPermutateForClues(Root, i, j).Select(l => l.Encode()).ToList());
+                    _permutations.Add((i, j), StartPermutateForClues(zero, i, j).Select(l => l.Encode()).ToList());
         }
 
-        public static int[] Root { get; } = Board.AllPossibilities.Select(c => c + 48).ToArray();
+        public static int[] Root { get; } = Board.AllPossibilities.Select(c => c - 48).ToArray();
 
         public IEnumerable<string> this[(int cl, int cr) index] => _permutations[index];
 
