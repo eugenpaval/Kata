@@ -14,7 +14,7 @@ namespace Kata
 
     internal class Board
     {
-        public const string AllPossibilities = "123456";
+        public const string AllPossibilities = "1234";
 
         private readonly string[] _board;
 
