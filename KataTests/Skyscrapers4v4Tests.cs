@@ -29,7 +29,7 @@ namespace KataTests
                 new[] {3, 2, 5, 4, 6, 1}
             };
 
-            var actual = Skyscrapers.SolvePuzzle(clues);
+            var actual = SkyscrapersDyn.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
@@ -54,7 +54,7 @@ namespace KataTests
                 new[] {3, 4, 2, 5, 1, 6}
             };
 
-            var actual = Skyscrapers.SolvePuzzle(clues);
+            var actual = SkyscrapersDyn.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
@@ -76,6 +76,23 @@ namespace KataTests
                 new[] {4, 2, 3, 1},
                 new[] {1, 3, 2, 4}
             };
+
+            var actual = SkyscrapersDyn.SolvePuzzle(clues);
+            CollectionAssert.AreEqual(expected, actual);
+        }
+
+        [Test]
+        public void SolveSkyscrapers114()
+        {
+            var clues = new[]{ 2, 2, 1, 3,
+                2, 2, 3, 1,
+                1, 2, 2, 3,
+                3, 2, 1, 3};
+
+            var expected = new[]{ new []{1, 3, 4, 2},
+                new []{4, 2, 1, 3},
+                new []{3, 4, 2, 1},
+                new []{2, 1, 3, 4 }};
 
             var actual = SkyscrapersDyn.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);

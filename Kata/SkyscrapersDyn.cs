@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -15,13 +14,15 @@ namespace Kata
 
     internal class Board
     {
-        public const string AllPossibilities = "1234";
+        public const string AllPossibilities = "123456";
 
         private readonly string[] _board;
+        private readonly bool[] _processed;
 
         private Board()
         {
             _board = _board = new string[AllPossibilities.Length * AllPossibilities.Length];
+            _processed = new bool[_board.Length];
         }
 
         public Board(int[] clues) : this()
@@ -53,17 +54,20 @@ namespace Kata
 
         private void SetBoardValues()
         {
-            foreach (var p in GetPossibilities())
+            var p = GetPossibilities();
+            while (p != default)
+            {
                 SetBoardValue(p.position, p.possibilities);
+                p = GetPossibilities();
+            }
         }
 
-        private void SetBoardValue(int position, string possibility)
+        private bool SetBoardValue(int position, string possibility)
         {
             var value = _board[position]
                 .Select(c => c)
                 .Intersect(possibility)
                 .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c), sb => sb.ToString());
-            var work = new Queue<(int position, string value)>();
 
             if (value.Length > 1)
             {
@@ -75,52 +79,64 @@ namespace Kata
                     }
             }
 
-            work.Enqueue((position, value));
+            _board[position] = value;
 
-            while (work.Count != 0)
+            var l = position / AllPossibilities.Length;
+            var c = position % AllPossibilities.Length;
+
+            for (var i = l * AllPossibilities.Length; i < (l + 1) * AllPossibilities.Length; ++i)
             {
-                (position, value) = work.Dequeue();
+                if (i == position)
+                    continue;
 
-                var l = position / AllPossibilities.Length;
-                var c = position % AllPossibilities.Length;
-
-                for (var i = l * AllPossibilities.Length; i < (l + 1) * AllPossibilities.Length; ++i)
-                {
-                    _board[i] = _board[i].Replace(value, "");
-                    if (_board[i].Length == 1)
-                        work.Enqueue((i, _board[i]));
-                }
-
-                for (var i = c; i <  AllPossibilities.Length; i += AllPossibilities.Length)
-                {
-                    _board[i] = _board[i].Replace(value, "");
-                    if (_board[i].Length == 1)
-                        work.Enqueue((i, _board[i]));
-                }
+                _board[i] = _board[i].Replace(value, "");
             }
 
-            _board[position] = possibility;
+            for (var i = c; i / AllPossibilities.Length < AllPossibilities.Length; i += AllPossibilities.Length)
+            {
+                if (i == position)
+                    continue;
+
+                _board[i] = _board[i].Replace(value, "");
+            }
         }
 
         private bool CheckCandidate(int position, char candidateValue)
         {
             var (l, c) = (position / AllPossibilities.Length, position % AllPossibilities.Length);
             var (cl, cc) = (CluesForLine(l), CluesForColumn(c));
-            var pLine = _permutations[cl].Where(p => p[c] == candidateValue).Select(p => p[c]).ToList();
+            var pLine = _permutations[cl].Where(p => p[c] == candidateValue);
+            var pColumn = _permutations[cc].Where(p => p[l] == candidateValue);
 
-            for (var i = 0; i < AllPossibilities.Length; ++i)
+            var ok = true;
+            foreach (var p in pLine)
             {
-                if (cc == (0, 0))
-                    continue;
+                ok = true;
+                for (var i = 0; i < p.Length; ++i)
+                    if (!_board[l * AllPossibilities.Length + i].Contains(p[i]))
+                    {
+                        ok = false;
+                        break;
+                    }
 
-                var cp = _permutations[cc].Where(p => p[l + i] == candidateValue).Select(p => p[l+i]);
-                var intersection = cp.Intersect(pLine);
-
-                if (!intersection.Any())
-                    return false;
+                if (ok) break;
             }
 
-            return true;
+            if (ok)
+                foreach (var p in pColumn)
+                {
+                    ok = true;
+                    for (var i = 0; i < p.Length; ++i)
+                        if (!_board[i * AllPossibilities.Length + c].Contains(p[i]))
+                        {
+                            ok = false;
+                            break;
+                        }
+
+                    if (ok) break;
+                }
+
+            return ok;
         }
 
         public int[][] Solve()
@@ -128,48 +144,52 @@ namespace Kata
             SetBoardValues();
 
             var result = new int[_board.Length / AllPossibilities.Length][];
+
             for (var i = 0; i < AllPossibilities.Length; ++i)
+            {
+                result[i] = new int[AllPossibilities.Length];
                 for (var j = 0; j < AllPossibilities.Length; ++j)
                     result[i][j] = int.Parse(_board[i * AllPossibilities.Length + j]);
+            }
 
             return result;
         }
 
-        //private static readonly (int, int)[] _lineClues =
-        //{
-        //    (23, 6),
-        //    (22, 7),
-        //    (21, 8),
-        //    (20, 9),
-        //    (19, 10),
-        //    (18, 11)
-        //};
-
-        //private static readonly (int, int)[] _columnClues =
-        //{
-        //    (0, 17),
-        //    (1, 16),
-        //    (2, 15),
-        //    (3, 14),
-        //    (4, 13),
-        //    (5, 12)
-        //};
-
         private static readonly (int, int)[] _lineClues =
         {
-            (15, 4),
-            (14, 5),
-            (13, 6),
-            (12, 7),
+            (23, 6),
+            (22, 7),
+            (21, 8),
+            (20, 9),
+            (19, 10),
+            (18, 11)
         };
 
         private static readonly (int, int)[] _columnClues =
         {
-            (0, 11),
-            (1, 10),
-            (2, 9),
-            (3, 8),
+            (0, 17),
+            (1, 16),
+            (2, 15),
+            (3, 14),
+            (4, 13),
+            (5, 12)
         };
+
+        //private static readonly (int, int)[] _lineClues =
+        //{
+        //    (15, 4),
+        //    (14, 5),
+        //    (13, 6),
+        //    (12, 7),
+        //};
+
+        //private static readonly (int, int)[] _columnClues =
+        //{
+        //    (0, 11),
+        //    (1, 10),
+        //    (2, 9),
+        //    (3, 8),
+        //};
 
         protected int[] Clues { get; private set; }
 
@@ -202,9 +222,21 @@ namespace Kata
             return new Board(this);
         }
 
-        public IEnumerable<(int position, string possibilities)> GetPossibilities()
+        public (int position, string possibilities) GetPossibilities()
         {
-            return _board.Select((value, index) => (index, value)).OrderBy(v => v.value.Length);
+            var minPair = _processed
+                .Select((processed, position) => (position, processed, true))
+                .Where(p => !p.processed)
+                .OrderBy(p => _board[p.position].Length)
+                .FirstOrDefault();
+
+            if (minPair != default)
+            {
+                _processed[minPair.position] = true;
+                return (minPair.position, _board[minPair.position]);
+            }
+
+            return default;
         }
     }
 
