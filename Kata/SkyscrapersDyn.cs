@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace Kata
+namespace KataDynamic
 {
     public class SkyscrapersDyn
     {
@@ -340,5 +340,39 @@ namespace Kata
             return charList.OrderBy(c => c).Aggregate(new StringBuilder(), (sb, v) => sb.Append(v), sb => sb.ToString());
         }
 
+        public static IEnumerable<List<int>> PermutateList(this List<int> current)
+        {
+            if (current.Count == 0)
+                yield return current;
+
+            foreach (var e in current)
+            {
+                foreach (var p in current.Where(x => x != e).ToList().PermutateList())
+                {
+                    var result = new List<int> { e };
+                    result.AddRange(p);
+
+                    yield return result;
+                }
+            }
+        }
+
+        public static int CountVisible(this List<int> list, bool reversed = false)
+        {
+            var (count, max) = (0, 0);
+            var (start, increment) = reversed ? (list.Count - 1, -1) : (0, 1);
+            var iter = 0;
+
+            for (var i = start; iter++ < list.Count; i += increment)
+            {
+                if (max < list[i])
+                {
+                    max = list[i];
+                    ++count;
+                }
+            }
+
+            return count;
+        }
     }
 }
