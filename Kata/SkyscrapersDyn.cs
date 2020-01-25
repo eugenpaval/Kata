@@ -54,51 +54,52 @@ namespace Kata
 
         private void SetBoardValues()
         {
-            var p = GetPossibilities();
-            while (p != default)
+            (int position, string possibility) p;
+            while ((p = GetPossibilities()) != default)
             {
-                SetBoardValue(p.position, p.possibilities);
-                p = GetPossibilities();
+                var value = _board[p.position]
+                    .Intersect(p.possibility)
+                    .Aggregate(new StringBuilder(), (sb, ch) => sb.Append(ch), sb => sb.ToString());
+
+                var snapshot = new Snapshot();
+                if (value.Length > 1)
+                {
+                    foreach (var candidateValue in p.possibility)
+                        if (CheckCandidate(p.position, candidateValue))
+                        {
+                            snapshot.TakeSnapshotAt(p.position, _board);
+
+                            if (!SetBoardValue(p.position, candidateValue.ToString()))
+                                snapshot.RestoreSnapshot(_board);
+
+                            break;
+                        }
+                }
+                else
+                {
+                    snapshot.TakeSnapshotAt(p.position, _board);
+                    if (!SetBoardValue(p.position, value))
+                        snapshot.RestoreSnapshot(_board);
+                }
             }
         }
 
-        private bool SetBoardValue(int position, string possibility)
+        private bool SetBoardValue(int position, string value)
         {
-            var value = _board[position]
-                .Select(c => c)
-                .Intersect(possibility)
-                .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c), sb => sb.ToString());
-
-            if (value.Length > 1)
-            {
-                foreach (var candidateValue in possibility)
-                    if (CheckCandidate(position, candidateValue))
-                    {
-                        value = candidateValue.ToString();
-                        break;
-                    }
-            }
-
             _board[position] = value;
 
             var l = position / AllPossibilities.Length;
             var c = position % AllPossibilities.Length;
 
-            for (var i = l * AllPossibilities.Length; i < (l + 1) * AllPossibilities.Length; ++i)
+            for (var (i, j) = (l * AllPossibilities.Length, c); i < (l + 1) * AllPossibilities.Length; ++i, j+= AllPossibilities.Length)
             {
-                if (i == position)
-                    continue;
-
-                _board[i] = _board[i].Replace(value, "");
+                if (i != position)
+                    _board[i] = _board[i].Replace(value, "");
+                if (j != position)
+                    _board[j] = _board[j].Replace(value, "");
             }
 
-            for (var i = c; i / AllPossibilities.Length < AllPossibilities.Length; i += AllPossibilities.Length)
-            {
-                if (i == position)
-                    continue;
-
-                _board[i] = _board[i].Replace(value, "");
-            }
+            return true;
         }
 
         private bool CheckCandidate(int position, char candidateValue)
@@ -240,11 +241,42 @@ namespace Kata
         }
     }
 
-    internal class PossibilitiesComparer : IComparer<KeyValuePair<int, string>>
+    internal class Snapshot
     {
-        public int Compare(KeyValuePair<int, string> x, KeyValuePair<int, string> y)
+        private int _position = -1;
+        private string[] _line;
+        private string[] _column;
+
+        public void TakeSnapshotAt(int position, string[] board)
         {
-            return y.Value.Length.CompareTo(x.Value.Length);
+            _position = position;
+            var size = Board.AllPossibilities.Length;
+            var l = position / size;
+            var c = position % size;
+
+            _line = new string[size];
+            _column = new string[size];
+
+            for (var (i, j, k) = (l * size, c, 0); i < (l + 1) * size; ++i, j += size, ++k)
+            {
+                if (i != position)
+                    _line[k] = board[i];
+                if (j != position)
+                    _column[k] = board[j];
+            }
+        }
+
+        public void RestoreSnapshot(string[] board)
+        {
+            var size = Board.AllPossibilities.Length;
+            var l = _position / size;
+            var c = _position % size;
+
+            for (var (i, j, k) = (l* size, c, 0); i<(l + 1) * size; ++i, j += size, ++k)
+            {
+                board[i] = _line[k];
+                board[j] = _column[k];
+            }
         }
     }
 
