@@ -38,8 +38,12 @@ namespace Kata
                 var pLine = _permutations[CluesForLine(i)];
                 for (var j = 0; j < size; ++j)
                 {
+                    var k = i * size + j;
                     var pColumn = _permutations[CluesForColumn(j)];
-                    _board[i * size + j] = Intersection(pLine, pColumn, i, j);
+                    SetBoardValue(k, Intersection(pLine, pColumn, i, j));
+
+                    if (_board[k].Length == 1)
+                        _processed[k] = true;
                 }
             }
         }
@@ -52,40 +56,44 @@ namespace Kata
                 result._board[i] = other._board[i];
         }
 
-        private void SetBoardValues()
+        private bool SetBoardValues((int position, string possibility) p)
         {
-            (int position, string possibility) p;
-            while ((p = GetPossibilities()) != default)
+            if (p != default)
             {
-                var value = _board[p.position]
+                var possibleValues = _board[p.position]
                     .Intersect(p.possibility)
                     .Aggregate(new StringBuilder(), (sb, ch) => sb.Append(ch), sb => sb.ToString());
 
-                var snapshot = new Snapshot();
-                if (value.Length > 1)
+                foreach (var candidateValue in possibleValues)
                 {
-                    foreach (var candidateValue in p.possibility)
-                        if (CheckCandidate(p.position, candidateValue))
-                        {
-                            snapshot.TakeSnapshotAt(p.position, _board);
+                    if (CheckCandidate(p.position, candidateValue))
+                    {
+                        var snapshot = new Snapshot(p.position, _board);
+                        
+                        SetBoardValue(p.position, candidateValue.ToString());
+                        _processed[p.position] = true;
 
-                            if (!SetBoardValue(p.position, candidateValue.ToString()))
-                                snapshot.RestoreSnapshot(_board);
+                        if (SetBoardValues(GetSimplestPossibility()))
+                            return true;
 
-                            break;
-                        }
+                        snapshot.RestoreSnapshot(_board, _processed);
+                    }
                 }
-                else
-                {
-                    snapshot.TakeSnapshotAt(p.position, _board);
-                    if (!SetBoardValue(p.position, value))
-                        snapshot.RestoreSnapshot(_board);
-                }
+
+                return false;
             }
+
+            return true;
         }
 
-        private bool SetBoardValue(int position, string value)
+        private void SetBoardValue(int position, string value)
         {
+            if (value.Length > 1)
+            {
+                _board[position] = _board[position].Intersect(value).Encode();
+                return;
+            }
+
             _board[position] = value;
 
             var l = position / AllPossibilities.Length;
@@ -98,8 +106,6 @@ namespace Kata
                 if (j != position)
                     _board[j] = _board[j].Replace(value, "");
             }
-
-            return true;
         }
 
         private bool CheckCandidate(int position, char candidateValue)
@@ -142,7 +148,7 @@ namespace Kata
 
         public int[][] Solve()
         {
-            SetBoardValues();
+            SetBoardValues(GetSimplestPossibility());
 
             var result = new int[_board.Length / AllPossibilities.Length][];
 
@@ -223,7 +229,7 @@ namespace Kata
             return new Board(this);
         }
 
-        public (int position, string possibilities) GetPossibilities()
+        public (int position, string possibilities) GetSimplestPossibility()
         {
             var minPair = _processed
                 .Select((processed, position) => (position, processed, true))
@@ -232,10 +238,7 @@ namespace Kata
                 .FirstOrDefault();
 
             if (minPair != default)
-            {
-                _processed[minPair.position] = true;
                 return (minPair.position, _board[minPair.position]);
-            }
 
             return default;
         }
@@ -243,11 +246,11 @@ namespace Kata
 
     internal class Snapshot
     {
-        private int _position = -1;
-        private string[] _line;
-        private string[] _column;
+        private readonly int _position = -1;
+        private readonly string[] _line;
+        private readonly string[] _column;
 
-        public void TakeSnapshotAt(int position, string[] board)
+        public Snapshot(int position, string[] board)
         {
             _position = position;
             var size = Board.AllPossibilities.Length;
@@ -259,14 +262,12 @@ namespace Kata
 
             for (var (i, j, k) = (l * size, c, 0); i < (l + 1) * size; ++i, j += size, ++k)
             {
-                if (i != position)
-                    _line[k] = board[i];
-                if (j != position)
-                    _column[k] = board[j];
+                _line[k] = board[i];
+                _column[k] = board[j];
             }
         }
 
-        public void RestoreSnapshot(string[] board)
+        public void RestoreSnapshot(string[] board, bool[] processed)
         {
             var size = Board.AllPossibilities.Length;
             var l = _position / size;
@@ -277,6 +278,8 @@ namespace Kata
                 board[i] = _line[k];
                 board[j] = _column[k];
             }
+
+            processed[_position] = false;
         }
     }
 
@@ -332,5 +335,10 @@ namespace Kata
         {
             return p.Aggregate(new StringBuilder(), (sb, v) => sb.Append(v), sb => sb.ToString());
         }
+        public static string Encode(this IEnumerable<char> charList)
+        {
+            return charList.OrderBy(c => c).Aggregate(new StringBuilder(), (sb, v) => sb.Append(v), sb => sb.ToString());
+        }
+
     }
 }
