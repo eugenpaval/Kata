@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using NUnit.Framework;
 using Kata;
+using KataDynamic;
 
 namespace KataTests
 {
