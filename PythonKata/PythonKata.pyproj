@@ -25,6 +25,12 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="RecoverSecretFrom3.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Sections.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="PanDigital.py">
       <SubType>Code</SubType>
     </Compile>
@@ -38,6 +44,9 @@
     </Compile>
     <Compile Include="Multiples3or5.py" />
     <Compile Include="SmallestPossibleSum.py" />
+    <Compile Include="test_RecoverSecretFrom3.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test_PyramidSlide.py">
       <SubType>Code</SubType>
     </Compile>
@@ -48,6 +57,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="test_Multiples3or5.py" />
+    <Compile Include="test_Sections.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test_SmallestPossibleSum.py">
       <SubType>Code</SubType>
     </Compile>

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using NUnit.Framework;
-using Kata;
+﻿using NUnit.Framework;
 using KataDynamic;
 
 namespace KataTests
@@ -30,7 +27,7 @@ namespace KataTests
                 new[] {3, 2, 5, 4, 6, 1}
             };
 
-            var actual = SkyscrapersDyn.SolvePuzzle(clues);
+            var actual = Random.Skyscrapers.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
@@ -55,7 +52,7 @@ namespace KataTests
                 new[] {3, 4, 2, 5, 1, 6}
             };
 
-            var actual = SkyscrapersDyn.SolvePuzzle(clues);
+            var actual = Random.Skyscrapers.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
