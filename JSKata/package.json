@@ -2,7 +2,7 @@
   "name": "jskata",
   "version": "0.0.0",
   "description": "JSKata",
-  "main": "app.js",
+  "main": "PrimeInNumbers.js",
   "author": {
     "name": ""
   }
