@@ -1,26 +1,26 @@
-from functools import reduce
-from collections import deque
-
 def decompose(n):
-    for x in range(n, 0, -1):
-        result = getPossibleNumbers(x, x-1)
+    for x in range(n-1, 0, -1):
+        result = list(getPossibleNumbers(n**2, x))
+        result.sort()
 
         if result == []:
             break
 
-        sumSquares = reduce(lambda x, y: x + y**2, result)
+        sumSquares = sum(map(lambda x: x**2, result))
         if sumSquares == n ** 2:
-            break
+            return result
 
     return None
 
-def getPossibleNumbers(target, candidate):
+def getPossibleNumbers(square, candidate):
     if candidate == 0:
-        return []
+        return set()
+    if candidate == 1:
+        return set([1])
 
-    r = int((target**2 - candidate**2)**.5)
-    next = getPossibleNumbers(r, r-1)
-    next.append(candidate)
-    
+    diff = square - candidate**2
+    nc = int(diff**.5)
+    next = getPossibleNumbers(diff, nc)
+    next.add(candidate)
+
     return next
-
