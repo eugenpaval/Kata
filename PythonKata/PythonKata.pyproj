@@ -38,6 +38,7 @@
     </Compile>
     <Compile Include="Multiples3or5.py" />
     <Compile Include="SmallestPossibleSum.py" />
+    <Compile Include="SquaresInSquare.py" />
     <Compile Include="test_PyramidSlide.py">
       <SubType>Code</SubType>
     </Compile>
@@ -51,6 +52,7 @@
     <Compile Include="test_SmallestPossibleSum.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="test_SquaresInSquare.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
