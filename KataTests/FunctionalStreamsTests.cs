@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using Kata;
+using Microsoft.VisualBasic;
 using NUnit.Framework;
 
 namespace KataTests
@@ -155,6 +157,41 @@ namespace KataTests
                 s = s.Tail.Value;
                 t = t.Tail.Value;
             }
+        }
+    }
+
+    [TestFixture]
+    public class FibAndPrimesTests
+    {
+        [Test]
+        public void FibTest()
+        {
+            var s = Stream.Fib();
+            int[] expected = 
+            {
+                0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144
+            };
+
+            foreach (var f in s.Take(expected.Length))
+                Console.WriteLine(f);
+
+            CollectionAssert.AreEqual(expected, s.Take(expected.Length).ToArray());
+        }
+
+        [Test]
+        public void PrimesTest()
+        {
+            var s = Stream.Primes();
+            int[] expected =
+            {
+                2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37
+            };
+
+            foreach (var f in s.Take(expected.Length))
+                Console.WriteLine(f);
+
+            CollectionAssert.AreEqual(expected, s.Take(expected.Length).ToArray());
+
         }
     }
 }

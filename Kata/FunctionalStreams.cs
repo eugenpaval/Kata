@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
-using System.Runtime.Intrinsics.X86;
 
 namespace Kata
 {
@@ -107,8 +104,12 @@ namespace Kata
             {
                 yield return s.Head;
 
+                s = s.Tail.Value;
                 for (var i = 1; i < n; ++i)
-                    yield return s.Tail.Value.Head;
+                {
+                    yield return s.Head;
+                    s = s.Tail.Value;
+                }
             }
         }
 
@@ -137,28 +138,58 @@ namespace Kata
         }
 
         // Return the stream of all fibonacci numbers.
-        public static Stream<int> Fib()
+        public static Stream<int> Fib(int v0 = 0, int v1 = 0)
         {
-            var (v0, v1) = (0, 1);
-            return NextFibonacci(v0, v1);
-        }
-
-        public static Stream<int> NextFibonacci(int v0, int v1)
-        {
-            return new Stream<int>(v0 + v1, new Lazy<Stream<int>>(() =>
-            {
-                var h = v0 + v1;
-                v0 = v1;
-                v1 = h;
-
-                return NextFibonacci(v1, h);
-            }));
+            if (v0 == 0 && v1 == 0)
+                return new Stream<int>(0, new Lazy<Stream<int>>(() => Fib(0, 1)));
+            
+            if (v0 == 0 && v1 == 1)
+                return new Stream<int>(1, new Lazy<Stream<int>>(() => Fib(1, 0)));
+            
+            if (v0 == 1 && v1 == 0)
+                return new Stream<int>(1,  new Lazy<Stream<int>>(() => Fib(1, 1)));
+            
+            return new Stream<int>(v0 + v1, new Lazy<Stream<int>>(() => Fib(v1, v0 + v1)));
         }
 
         // Return the stream of all prime numbers.
-        public static Stream<int> Primes()
+        public static Stream<int> Primes(IList<int> primesSoFar = null)
         {
-            throw new NotImplementedException();
+            var head = 2;
+            if (primesSoFar == null)
+            {
+                primesSoFar = new List<int> {head};
+            }
+            else if (primesSoFar.Count == 1)
+            {
+                head = 3;
+                primesSoFar.Add(head);
+            }
+            else
+            {
+                var pp = primesSoFar.LastOrDefault() + 2;
+                while (true)
+                {
+                    var prime = true;
+                    for (var i = 1; primesSoFar[i] <= (int)Math.Sqrt(pp); ++i)
+                        if (pp % primesSoFar[i] == 0)
+                        {
+                            prime = false;
+                            break;
+                        }
+
+                    if (prime)
+                    {
+                        head = pp;
+                        primesSoFar.Add(pp);
+                        break;
+                    }
+
+                    pp += 2;
+                }
+            }
+
+            return new Stream<int>(head, new Lazy<Stream<int>>(() => Primes(primesSoFar)));
         }
     }
 }
