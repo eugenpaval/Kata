@@ -26,6 +26,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="KnightPath.py" />
+    <Compile Include="LineSafari.py" />
+    <Compile Include="MaxProfitsWithKtrans.py" />
     <Compile Include="RecoverSecretFrom3.py">
       <SubType>Code</SubType>
     </Compile>
@@ -46,6 +48,8 @@
     <Compile Include="Multiples3or5.py" />
     <Compile Include="SmallestPossibleSum.py" />
     <Compile Include="test_KnightPath.py" />
+    <Compile Include="test_LineSafari.py" />
+    <Compile Include="test_MaxProfitWithKTrans.py" />
     <Compile Include="test_RecoverSecretFrom3.py">
       <SubType>Code</SubType>
     </Compile>
