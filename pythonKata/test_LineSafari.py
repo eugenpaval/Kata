@@ -3,10 +3,10 @@ from LineSafari import line
 
 class LineSafariTests(unittest.TestCase):
     def test1(self):
-        grid = ["           ",
-        "X---------X",
-        "           ",
-        "           "]
+        grid = ["    ",
+        "X--X",
+        "    ",
+        "    "]
         self.assertEqual(line(grid), True)
 
     def test2(self):
@@ -40,10 +40,10 @@ class LineSafariTests(unittest.TestCase):
 
     def test6(self):
         grid = [\
-        "      +------+",
-        "      |      |",
-        "X-----+------+",
-        "      |       ",
-        "      X       "]
+        "  +-+",
+        "  | |",
+        "X-+-+",
+        "  |  ",
+        "  X  "]
         self.assertEqual(line(grid), False)
         
