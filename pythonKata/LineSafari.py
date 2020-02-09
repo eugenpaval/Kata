@@ -1,58 +1,66 @@
-from collections import deque
-
 def line(grid):
     solve = GridPath(grid)
     pathFound = False
-    forks = deque()
     cPos = solve.StartPos
 
     if cPos == None:
         return False
 
     # starting position
-    forks.append(cPos)
-    while len(forks) > 0:
-        path = forks.popleft()
-        for p in solve.whereToGoNext(cPos, path):
-            if solve.getArtifact(p) == "X":
-                if pathFound == True:
-                    return False
-                pathFound = True
-            else:
-                forks.append(p)
-        cPos = path
 
     return pathFound
 
 class GridPath:
     def __init__(self, grid):
         self.Grid = grid
-        self.Reacheable = {}
+        self.Visited = set()
         self.SizeX, self.SizeY = len(grid[0]), len(grid)
         self.StartPos = self.startPos()
         self.Grid[self.StartPos[1]] = "".join(["+" if i == self.StartPos[0] else self.Grid[self.StartPos[1]][i] for i in range(self.SizeX)])
+        self.Moves = \
+            {
+                "-": [(-1, 0), (1, 0)],
+                "|": [(0, -1), (0, 1)],
+                "+": [(-1,0), (1, 0), (0, -1), (0, 1)]
+            }
+        self.Forbidden = \
+            {
+                "-": lambda x, deltaX, deltaY: x not in " |",
+                "|": lambda x, deltaX, deltaY: x not in " -",
+                "+": lambda x, deltaX, deltaY: deltaY == 0 and self.getArtifact(newPos) not in " |") or (deltaX == 0 and self.getArtifact(newPos) not in " -"
+            }
 
-    def whereToGoNext(self, pPos, cPos):
+    def whereToGoNext(self, cPos):
         result = []
 
-        dPos = (pPos[0] - cPos[0], pPos[1] - cPos[1])
-        b = self.getArtifact(cPos)
+        cArtifact = self.getArtifact(cPos)
+        moves = self.Moves[cArtifact]
+        for delta in moves:
+            x, y = delta
+            if x < 0 or x >= self.SizeX or y < 0 or y >= self.SizeY:
+                continue
+            newPos = (cPos[0] + delta[0], cPos[1] + delta[1])
+            if self.Forbidden[cArtifact](cArtifact, deltaX, deltaY):
+                result.append(newPos)
 
         if b == "-":
-            movesOnX = [(-1, 0), (1, 0)]
-            delta = list(filter(lambda p: dPos != p, movesOnX))[0]
-            newPos = (cPos[0] + delta[0], cPos[1] + delta[1])
-            if self.getArtifact(newPos) not in " |":
-                result.append(newPos)
+            for  delta in [(-1, 0), (1, 0)]:
+                x, y = delta
+                if x < 0 or x >= self.SizeX or y < 0 or y >= self.SizeY:
+                    continue
+                newPos = (cPos[0] + delta[0], cPos[1] + delta[1])
+                if self.getArtifact(newPos) not in " |":
+                    result.append(newPos)
         elif b == "|":
-            movesOnY = [(0, -1), (0, 1)]
-            delta = list(filter(lambda p: dPos != p, movesOnY))[0]
-            newPos = (cPos[0] + delta[0], cPos[1] + delta[1])
-            if self.getArtifact(newPos) not in " -":
-                result.append(newPos)
+            for delta in [(0, -1), (0, 1)]:
+                x, y = delta
+                if x < 0 or x >= self.SizeX or y < 0 or y >= self.SizeY:
+                    continue
+                newPos = (cPos[0] + delta[0], cPos[1] + delta[1])
+                if self.getArtifact(newPos) not in " -":
+                    result.append(newPos)
         elif b == "+":
-            possibleMoves = [d for d in [(-1,0), (1, 0), (0, -1), (0, 1)] if d != dPos]
-            for delta in possibleMoves:
+            for delta in [(-1,0), (1, 0), (0, -1), (0, 1)]:
                 deltaX, deltaY = delta
                 newPos = (cPos[0] + deltaX, cPos[1] + deltaY)
                 x, y = newPos
