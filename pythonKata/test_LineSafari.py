@@ -8,4 +8,42 @@ class LineSafariTests(unittest.TestCase):
         "           ",
         "           "]
         self.assertEqual(line(grid), True)
+
+    def test2(self):
+        grid = ["     ",
+        "  X  ",
+        "  |  ",
+        "  |  ",
+        "  X  "]
+        self.assertEqual(line(grid), True)
+
+    def test3(self):
+        grid = ["                    ",
+        "     +--------+     ",
+        "  X--+        +--+  ",
+        "                 |  ",
+        "                 X  ",
+        "                    "]
+        self.assertEqual(line(grid), True)
+
+    def test4(self):
+        grid = ["                     ",
+        "    +-------------+  ",
+        "    |             |  ",
+        " X--+      X------+  ",
+        "                     "]
+        self.assertEqual(line(grid), True)
+
+    def test5(self):
+        grid = ["X-----|----X"]
+        self.assertEqual(line(grid), False)
+
+    def test6(self):
+        grid = [\
+        "      +------+",
+        "      |      |",
+        "X-----+------+",
+        "      |       ",
+        "      X       "]
+        self.assertEqual(line(grid), False)
         
