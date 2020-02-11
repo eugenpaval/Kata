@@ -35,10 +35,17 @@ class LineSafariTests(unittest.TestCase):
         self.assertEqual(line(grid), True)
 
     def test5(self):
+        grid = ["                      ",
+        "   +-------+          ",
+        "   |      +++---+     ",
+        "X--+      +-+   X     "]
+        self.assertEqual(line(grid), True)
+
+    def test6(self):
         grid = ["X-----|----X"]
         self.assertEqual(line(grid), False)
 
-    def test6(self):
+    def test7(self):
         grid = [\
         "  +-+",
         "  | |",

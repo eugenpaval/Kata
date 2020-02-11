@@ -14,32 +14,13 @@ class GridPath:
             {
                 "-": [(-1, 0), (1, 0)],
                 "|": [(0, -1), (0, 1)],
-                "+": [(-1,0), (1, 0), (0, -1), (0, 1)]
+                " ": []
             }
         self.Forbidden = \
             {
                 "-": lambda artifact, deltaX, deltaY: artifact not in " |",
                 "|": lambda artifact, deltaX, deltaY: artifact not in " -",
-                "+": lambda artifact, deltaX, deltaY: (deltaY == 0 and artifact not in " |") or (deltaX == 0 and artifact not in " -")
             }
-
-    def whereToGoNext(self, pPos, cPos):
-        result = []
-        cArtifact = self.getArtifact(cPos)
-        moves = self.Moves[cArtifact]
-        cMove = (pPos[0] - cPos[0], pPos[1] - cPos[1])
-
-        for delta in [m for m in moves if m != cMove]:
-            newX, newY = cPos[0] + delta[0], cPos[1] + delta[1]
-            
-            if newX < 0 or newX >= self.SizeX or newY < 0 or newY >= self.SizeY:
-                continue
-
-            nArtifact = self.getArtifact((newX, newY))
-            if self.Forbidden[cArtifact](nArtifact, delta[0], delta[1]):
-                result.append((newX, newY))
-
-        return result
 
     def startPos(self):
         for i in range(0, self.SizeY):
@@ -49,6 +30,8 @@ class GridPath:
         return None
 
     def getArtifact(self, pos):
+        if pos[0] < 0 or pos[0] >= self.SizeX or pos[1] < 0 or pos[1] >= self.SizeY:
+            return " "
         return self.Grid[pos[1]][pos[0]]
 
     def findPaths(self, pPos, cPos, alreadyVisited):
@@ -84,3 +67,34 @@ class GridPath:
                 return True
 
         return False
+
+    def whereToGoNext(self, pMove, pos):
+        dx, dy = pMove
+        result = []
+        pArtifact = " "
+        artifact = self.getArtifact(pos)
+
+        if artifact == "+":
+            if dx != 0:
+                for m in [(0, -1), (0, 1)]:
+                    p = (0, pos[1] + m[1])
+                    artifact = self.getArtifact(p)
+                    if artifact in "|+" and artifact != pArtifact:
+                        result.append(p)
+                    pArtifact = artifact
+            elif dy != 0:
+                for m in [(-1, 0), (1, 0)]:
+                    p = (pos[0] + m[0], 0)
+                    artifact = self.getArtifact(p)
+                    if artifact in "-+" and artifact != pArtifact:
+                        result.append(p)
+                    pArtifact = artifact
+        elif artifact in "-|":
+            for delta in [m for m in self.Moves[artifact] if m != pMove]:
+                newX, newY = pos[0] + delta[0], pos[1] + delta[1]
+                
+                nArtifact = self.getArtifact((newX, newY))
+                if self.Forbidden[artifact](nArtifact, delta[0], delta[1]):
+                    result.append((newX, newY))
+
+        return result[0] if len(result) == 1 else ()
