@@ -338,3 +338,8 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+PythonKata/.vscode/settings.json
+PythonKata/.vscode/.ropeproject/objectdb
+JavaKata
+PythonKata/.vscode/settings.json
+PythonKata/.vscode/.ropeproject/objectdb
