@@ -21,6 +21,8 @@ class GridPath:
             "X": self.nextPositionFromSpot
         }
         self.Spots = self.findSpots()
+        self.CountPathChars = self.countPathCrumbs()
+        self.Visited = set()
 
     def findSpots(self):
         spots = []
@@ -31,22 +33,33 @@ class GridPath:
         
         return spots
 
+    def countPathCrumbs(self):
+        count = 0
+        for i in range(self.SizeY):
+            for c in self.Grid[i]:
+                if c in "-|+X":
+                    count += 1
+        return count
+                
     def getArtifact(self, pos):
         if pos[0] < 0 or pos[0] >= self.SizeX or pos[1] < 0 or pos[1] >= self.SizeY:
             return " "
         return self.Grid[pos[1]][pos[0]]
 
     def findAllPaths(self):
-        result = 0
+        crumbs = 0
         for start in self.Spots:
-            result += self.findPaths(start, start)
-            if result == 1:
-                return True
+            crumbs = self.findPaths(start, start)
+            if crumbs == self.CountPathChars:
+                break
+            self.Visited.clear()
 
-        return result == 1
+        return crumbs == self.CountPathChars
 
     def findPaths(self, pPos, cPos):
+        countCrumbs = 1
         while True:
+            self.Visited.add(pPos)
             currentArtifact = self.getArtifact(cPos)
             pMove = (pPos[0] - cPos[0], pPos[1] - cPos[1])
             p = self.NextPosition[currentArtifact](pMove, cPos)
@@ -54,10 +67,11 @@ class GridPath:
             if p == ():
                 return 0
             if self.getArtifact(p) == 'X':
-                return 1
+                return countCrumbs + 1
 
             pPos = cPos
             cPos = p
+            countCrumbs += 1
 
     def nextPositionFromX(self, pMove, cPos):
         deltaX, deltaY = self.Moves["-"](pMove)[0]
@@ -81,10 +95,13 @@ class GridPath:
 
     def nextPositionFromCross(self, pMove, cPos):
         result = []
-        allowedArtifacts = "|+" if pMove[0] != 0 else "-+"
+        allowedArtifacts = "|+X" if pMove[0] != 0 else "-+X"
 
         for m in self.Moves["+"](pMove):
             p = (cPos[0] + m[0], cPos[1] + m[1])
+            if p in self.Visited:
+                continue
+
             artifact = self.getArtifact(p)
 
             if artifact in allowedArtifacts:
