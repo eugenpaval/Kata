@@ -5,7 +5,7 @@ class Debugger(object):
     method_calls = []
 
     @staticmethod
-    def addMethodCall(cls, name, *args, **kwargs):
+    def addMethodCall(cls, name, args, kwargs):
         Debugger.method_calls.append({"class": cls, "method": name, "args": args, "kwargs": kwargs})
 
     @staticmethod
@@ -16,7 +16,7 @@ def debugFunc(cls):
     def debugFuncImpl(func, self):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            Debugger.addMethodCall(cls, func.__name__, map(lambda x: (self, x), args), map(lambda x: (self, x), kwargs))
+            Debugger.addMethodCall(cls, func.__name__, (self,) + args, kwargs)
             return func(self, *args, **kwargs)
         
         return wrapper
@@ -36,7 +36,9 @@ def debugClass(cls):
         return val
 
     def __setattr__(self, name, val):
-        Debugger.addAttributeAccess("set", cls, name, val)
+        if not callable(val):
+            Debugger.addAttributeAccess("set", cls, name, val)
+        
         originalSetAttribute(self, name, val)
 
     cls.__getattribute__ = __getattribute__
@@ -56,7 +58,7 @@ class Meta(type):
 
         def __init__(self, *args, **kwargs):
             originalInit(self, *args, **kwargs)
-            Debugger.addMethodCall(cls, "__init__", map(lambda x: (self, x), args), map(lambda x: (self, x), kwargs))
+            Debugger.addMethodCall(cls, "__init__", (self,) + args, kwargs)
 
             for name, val in vars(cls).items():
                 if callable(val) and name not in ["__init__", "__getattribute__", "__setattr__"]:
