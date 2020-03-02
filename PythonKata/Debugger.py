@@ -13,28 +13,26 @@ class Debugger(object):
         Debugger.attribute_accesses.append({"action": action, "class": cls, "attribute": attr, "value": val})
 
 def debugFunc(cls):
-    def debugFuncImpl(func):
+    def debugFuncImpl(func, self):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            Debugger.addMethodCall(cls, func.__name__, *args, **kwargs)
-            return func(*args, **kwargs)
+            Debugger.addMethodCall(cls, func.__name__, map(lambda x: (self, x), args), map(lambda x: (self, x), kwargs))
+            return func(self, *args, **kwargs)
         
         return wrapper
     return debugFuncImpl
 
 def debugClass(cls):
-    # methods
-    for name, val in vars(cls).items():
-        if callable(val):
-            setattr(cls, name, debugFunc(cls)(val))
-
     # attributes
     originalGetAttribute = cls.__getattribute__
     originalSetAttribute = cls.__setattr__
     
     def __getattribute__(self, name):
         val = originalGetAttribute(self, name)
-        Debugger.addAttributeAccess("get", cls, name, val)
+        
+        if name[0:2] != "__" and name[:-2] != "__":
+            Debugger.addAttributeAccess("get", cls, name, val)
+
         return val
 
     def __setattr__(self, name, val):
@@ -53,7 +51,15 @@ class Meta(type):
         
         return clsObj
 
-    def __call__(cls, *args, **kwargs):
-        Debugger.addMethodCall(cls, "__init__", *args, **kwargs)
-        print("MetaClass call")
-        return cls
+    def __init__(cls, *args, **kwargs):
+        originalInit = cls.__init__
+
+        def __init__(self, *args, **kwargs):
+            originalInit(self, *args, **kwargs)
+            Debugger.addMethodCall(cls, "__init__", map(lambda x: (self, x), args), map(lambda x: (self, x), kwargs))
+
+            for name, val in vars(cls).items():
+                if callable(val) and name not in ["__init__", "__getattribute__", "__setattr__"]:
+                    setattr(self, name, debugFunc(cls)(val, self))
+
+        cls.__init__ = __init__
