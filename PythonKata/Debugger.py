@@ -22,12 +22,7 @@ def debugFunc(cls):
         return wrapper
     return debugFuncImpl
 
-def debugClass(cls):
-    # methods
-    for name, val in vars(cls).items():
-        if callable(val):
-            setattr(cls, name, debugFunc(cls)(val))
-
+def debugClass(cls, self):
     # attributes
     originalGetAttribute = cls.__getattribute__
     originalSetAttribute = cls.__setattr__
@@ -52,8 +47,15 @@ class Meta(type):
         clsObj = debugClass(clsObj)
         
         return clsObj
+        
+    def __init__(cls, *args, **kwargs):
+        #init
+        originalInit = cls.__init__
+        def __init__(self, *args, **kwargs):
+            for name, val in vars(cls).items():
+                if callable(val) and name != "__init__":
+                    setattr(self, name, debugFunc(cls, self)(val))
 
-    def __call__(cls, *args, **kwargs):
-        Debugger.addMethodCall(cls, "__init__", *args, **kwargs)
-        print("MetaClass call")
-        return cls
+            originalInit(self, *args, **kwargs)
+
+        cls.__init__ = __init__
