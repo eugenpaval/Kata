@@ -5,7 +5,7 @@ class Debugger(object):
     method_calls = []
 
     @staticmethod
-    def addMethodCall(cls, name, *args, **kwargs):
+    def addMethodCall(cls, name, args, kwargs):
         Debugger.method_calls.append({"class": cls, "method": name, "args": args, "kwargs": kwargs})
 
     @staticmethod
@@ -13,27 +13,36 @@ class Debugger(object):
         Debugger.attribute_accesses.append({"action": action, "class": cls, "attribute": attr, "value": val})
 
 def debugFunc(cls):
-    def debugFuncImpl(func):
+    def debugFuncImpl(func, self):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            Debugger.addMethodCall(cls, func.__name__, *args, **kwargs)
-            return func(*args, **kwargs)
+            Debugger.addMethodCall(cls, func.__name__, (self,) + args, kwargs)
+            return func(self, *args, **kwargs)
         
         return wrapper
     return debugFuncImpl
 
+<<<<<<< HEAD
 def debugClass(cls, self):
+=======
+def debugClass(cls):
+>>>>>>> 9f08d763222d2b6944fbfe911130cb83d6150d8a
     # attributes
     originalGetAttribute = cls.__getattribute__
     originalSetAttribute = cls.__setattr__
     
     def __getattribute__(self, name):
         val = originalGetAttribute(self, name)
-        Debugger.addAttributeAccess("get", cls, name, val)
+        
+        if name[0:2] != "__" and name[:-2] != "__":
+            Debugger.addAttributeAccess("get", cls, name, val)
+
         return val
 
     def __setattr__(self, name, val):
-        Debugger.addAttributeAccess("set", cls, name, val)
+        if not callable(val):
+            Debugger.addAttributeAccess("set", cls, name, val)
+        
         originalSetAttribute(self, name, val)
 
     cls.__getattribute__ = __getattribute__
@@ -58,4 +67,18 @@ class Meta(type):
 
             originalInit(self, *args, **kwargs)
 
+<<<<<<< HEAD
+=======
+    def __init__(cls, *args, **kwargs):
+        originalInit = cls.__init__
+
+        def __init__(self, *args, **kwargs):
+            originalInit(self, *args, **kwargs)
+            Debugger.addMethodCall(cls, "__init__", (self,) + args, kwargs)
+
+            for name, val in vars(cls).items():
+                if callable(val) and name not in ["__init__", "__getattribute__", "__setattr__"]:
+                    setattr(self, name, debugFunc(cls)(val, self))
+
+>>>>>>> 9f08d763222d2b6944fbfe911130cb83d6150d8a
         cls.__init__ = __init__
