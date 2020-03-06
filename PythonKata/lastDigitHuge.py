@@ -2,7 +2,8 @@
 def last_digit(lst):
     val = 1
     for v in reversed(lst):
-        val = lastNDigits(v, val, val+1)
+        val = lastNDigits(v, val, 3)
+        if val == 0 and v > 0: val = 100
     
     return val % 10
 
