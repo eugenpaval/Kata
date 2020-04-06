@@ -14,7 +14,7 @@ namespace KataDynamic
 
     internal class Board
     {
-        public const string AllPossibilities = "123456";
+        public const string AllPossibilities = "1234567";
 
         private readonly string[] _board;
         private readonly bool[] _processed;
@@ -164,23 +164,45 @@ namespace KataDynamic
 
         private static readonly (int, int)[] _lineClues =
         {
-            (23, 6),
-            (22, 7),
-            (21, 8),
-            (20, 9),
-            (19, 10),
-            (18, 11)
+            (27,7),
+            (26,8),
+            (25,9),
+            (24,10),
+            (23,11),
+            (22, 12),
+            (21,13)
         };
 
         private static readonly (int, int)[] _columnClues =
         {
-            (0, 17),
-            (1, 16),
-            (2, 15),
-            (3, 14),
-            (4, 13),
-            (5, 12)
+            (0,20),
+            (1,19),
+            (2,18),
+            (3,17),
+            (4,16),
+            (5,15),
+            (6,14),
+            (7,13)
         };
+        //private static readonly (int, int)[] _lineClues =
+        //{
+        //    (23, 6),
+        //    (22, 7),
+        //    (21, 8),
+        //    (20, 9),
+        //    (19, 10),
+        //    (18, 11)
+        //};
+
+        //private static readonly (int, int)[] _columnClues =
+        //{
+        //    (0, 17),
+        //    (1, 16),
+        //    (2, 15),
+        //    (3, 14),
+        //    (4, 13),
+        //    (5, 12)
+        //};
 
         //private static readonly (int, int)[] _lineClues =
         //{
