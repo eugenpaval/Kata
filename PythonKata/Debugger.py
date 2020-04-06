@@ -22,7 +22,11 @@ def debugFunc(cls):
         return wrapper
     return debugFuncImpl
 
+<<<<<<< HEAD
+def debugClass(cls, self):
+=======
 def debugClass(cls):
+>>>>>>> 9f08d763222d2b6944fbfe911130cb83d6150d8a
     # attributes
     originalGetAttribute = cls.__getattribute__
     originalSetAttribute = cls.__setattr__
@@ -52,7 +56,19 @@ class Meta(type):
         clsObj = debugClass(clsObj)
         
         return clsObj
+        
+    def __init__(cls, *args, **kwargs):
+        #init
+        originalInit = cls.__init__
+        def __init__(self, *args, **kwargs):
+            for name, val in vars(cls).items():
+                if callable(val) and name != "__init__":
+                    setattr(self, name, debugFunc(cls, self)(val))
 
+            originalInit(self, *args, **kwargs)
+
+<<<<<<< HEAD
+=======
     def __init__(cls, *args, **kwargs):
         originalInit = cls.__init__
 
@@ -64,4 +80,5 @@ class Meta(type):
                 if callable(val) and name not in ["__init__", "__getattribute__", "__setattr__"]:
                     setattr(self, name, debugFunc(cls)(val, self))
 
+>>>>>>> 9f08d763222d2b6944fbfe911130cb83d6150d8a
         cls.__init__ = __init__
