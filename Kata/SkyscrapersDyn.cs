@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace KataDynamic
+namespace Kata
 {
     public class SkyscrapersDyn
     {
@@ -325,7 +325,7 @@ namespace KataDynamic
         {
             var startingList = Root.Except(startingValues).Where(v => v != 0).ToList();
 
-            var result = startingList.PermutateList()
+            var result = Extensions.PermutateList(startingList)
                 .Select
                 (
                     l =>
@@ -342,10 +342,10 @@ namespace KataDynamic
                 );
 
             if (clue1 != 0)
-                result = result.Where(l => l.CountVisible() == clue1);
+                result = result.Where(l => Extensions.CountVisible(l) == clue1);
 
             if (clue2 != 0)
-                result = result.Where(l => l.CountVisible(true) == clue2);
+                result = result.Where(l => Extensions.CountVisible(l, true) == clue2);
 
             return result.Select(l => l.ToArray());
         }
@@ -369,7 +369,7 @@ namespace KataDynamic
 
             foreach (var e in current)
             {
-                foreach (var p in current.Where(x => x != e).ToList().PermutateList())
+                foreach (var p in PermutateList(current.Where(x => x != e).ToList()))
                 {
                     var result = new List<int> { e };
                     result.AddRange(p);

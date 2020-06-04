@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Random
+namespace Kata
 {
     public class Skyscrapers
     {

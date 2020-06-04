@@ -1,5 +1,5 @@
-﻿using NUnit.Framework;
-using KataDynamic;
+﻿using Kata;
+using NUnit.Framework;
 
 namespace KataTests
 {
