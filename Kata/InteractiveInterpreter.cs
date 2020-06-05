@@ -7,16 +7,27 @@ namespace InteractiveInterpreter
 {
     public class Interpreter
     {
-#pragma warning disable IDE1006 // Naming Styles
+        private static readonly Parser _parser = new Parser();
+
         public double? input(string input)
-#pragma warning restore IDE1006 // Naming Styles
         {
             var tokens = Tokenize(input);
-            var ctx = new Context();
-            var parser = new Parser(tokens, ctx);
-            var ast = parser.Parse();
+            if (!tokens.Any())
+                return null;
 
-            return new Evaluator(ctx).Evaluate(ast);
+            var ast = _parser.Parse(tokens);
+
+            try
+            {
+                return new EvaluationContext().Evaluate(ast, _parser.Context);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message == "Expression does not conform to given grammar")
+                    return null;
+
+                throw;
+            } 
         }
 
         private static IEnumerable<string> Tokenize(string input)
@@ -44,11 +55,9 @@ namespace InteractiveInterpreter
         Div,
         Mod,
         FnBodyDef,
-        FnCall,
         Assign,
         LParen,
         RParen,
-        EOF
     }
 
     static class TokenExtensions
@@ -83,17 +92,32 @@ namespace InteractiveInterpreter
 
     class Parser
     {
-        private readonly IEnumerator<string> _tokens;
-        private readonly Context _context;
+        private IEnumerator<string> _tokens;
 
-        public Parser(IEnumerable<string> tokens, Context context)
+        public Parser()
         {
-            _context = context;
-            _tokens = tokens.GetEnumerator();
-            _tokens.MoveNext();
+            Context = new ParserContext();
         }
 
-        private void EatToken(TokenType ttype)
+        public ParserContext Context { get; }
+
+        public AST Parse(IEnumerable<string> tokens)
+        {
+            _tokens = tokens.GetEnumerator();
+            _tokens.MoveNext();
+
+            if (_tokens.Current == null)
+                return null;
+
+            if (_tokens.Current.ToLower() == "fn")
+            {
+                AcceptToken(TokenType.Identifier);
+                return ParseFnDef();
+            }
+            return ParseExpr();
+        }
+
+        private void AcceptToken(TokenType ttype)
         {
             if (_tokens.Current.GetTokenType() == ttype)
                 _tokens.MoveNext();
@@ -101,74 +125,59 @@ namespace InteractiveInterpreter
                 throw new Exception("Invalid syntax error - unexpected token type");
         }
 
-        public AST Parse()
-        {
-            if (_tokens.Current == null)
-                return null;
-
-            if (_tokens.Current.ToLower() == "fn")
-            {
-                EatToken(TokenType.Identifier);
-                return ParseFnDef();
-            }
-
-            return ParseExpr();
-        }
-
         private AST ParseFnDef()
         {
             var fName = _tokens.Current;
-            EatToken(TokenType.Identifier);
+            AcceptToken(TokenType.Identifier);
 
             var formalParams = new List<string>();
 
             while (_tokens.Current.GetTokenType() == TokenType.Identifier)
             {
                 formalParams.Add(_tokens.Current);
-                EatToken(TokenType.Identifier);
+                AcceptToken(TokenType.Identifier);
             }
 
-            EatToken(TokenType.FnBodyDef);
+            AcceptToken(TokenType.FnBodyDef);
 
-            var body = ParseExpr() as BinaryOpAST;
+            var body = ParseExpr(formalParams) as BinaryOpAST;
             var fnDef = new FnDefAST(fName, formalParams, body);
             
-            _context.AddFnDef(fName, fnDef);
+            Context.AddDef(fName, fnDef);
             return fnDef;
         }
 
-        private AST ParseExpr()
+        private AST ParseExpr(List<string> ns = null)
         {
             // expr ::= term | (+\-) factor
-            var term = ParseTerm();
+            var term = ParseTerm(ns);
             var tokenType = _tokens.Current.GetTokenType();
 
             while (tokenType == TokenType.Add || tokenType == TokenType.Sub)
             {
                 var token = _tokens.Current;
-                EatToken(tokenType);
+                AcceptToken(tokenType);
 
-                var otherTerm = ParseTerm();
+                var otherTerm = ParseTerm(ns);
                 term = new BinaryOpAST(term, token, otherTerm);
-                
                 tokenType = _tokens.Current.GetTokenType();
             }
 
             return term;
         }
 
-        private AST ParseTerm()
+        private AST ParseTerm(List<string> ns)
         {
             // term ::= factor | (*\/|%) factor
-            var factor = ParseFactor();
+            var factor = ParseFactor(ns);
             var tokenType = _tokens.Current.GetTokenType();
 
             while (tokenType == TokenType.Mul || tokenType == TokenType.Div || tokenType == TokenType.Mod)
             {
                 var token = _tokens.Current;
-                EatToken(tokenType);
+                AcceptToken(tokenType);
 
-                var otherFactor = ParseFactor();
+                var otherFactor = ParseFactor(ns);
                 factor = new BinaryOpAST(factor, token, otherFactor);
                 tokenType = _tokens.Current.GetTokenType();
             }
@@ -176,51 +185,51 @@ namespace InteractiveInterpreter
             return factor;
         }
 
-        private AST ParseFactor()
+        private AST ParseFactor(List<string> ns)
         {
             // factor ::= number | identifier | assignment | '('expr')' | fn-call
             var tokenType = _tokens.Current.GetTokenType();
             AST node = null;
 
-            if (tokenType == TokenType.Identifier && _context.IsFnDef(_tokens.Current))
-                tokenType = TokenType.FnCall;
-
             switch (tokenType)
             {
                 case TokenType.Number:
                     node = new NumberAST(_tokens.Current);
-                    EatToken(TokenType.Number);
+                    AcceptToken(TokenType.Number);
                     break;
 
                 case TokenType.Identifier:
-                    node = new IdentifierAST(_tokens.Current);
-                    EatToken(TokenType.Identifier);
+                    if (Context.IsFnDef(_tokens.Current))
+                    {
+                        var fnDef = Context.GetDef<FnDefAST>(_tokens.Current);
+                        AcceptToken(TokenType.Identifier);
+                        
+                        var parameters = fnDef.FormalParams.Select(p => ParseExpr());
+                        node = new FnCallAST(fnDef.FName, parameters);
+                    }
+                    else
+                    {
+                        if (ns != null && !ns.Contains(_tokens.Current))
+                            throw new Exception($"Parameter {_tokens.Current} is not defined");
 
-                    if (_context.IsFnDef(_tokens.Current))
-                        throw new Exception($"Identifier {_tokens.Current} is already defined as a function");
+                        node = new IdentifierAST(_tokens.Current);
+                        AcceptToken(TokenType.Identifier);
+                    }
 
                     tokenType = _tokens.Current.GetTokenType();
                     while (tokenType == TokenType.Assign)
                     {
-                        EatToken(TokenType.Assign);
+                        AcceptToken(TokenType.Assign);
                         var expr = ParseExpr();
                         node = new BinaryOpAST(node, "=", expr);
                         tokenType = _tokens.Current.GetTokenType();
                     }
                     break;
 
-                case TokenType.FnCall:
-                    var fnDef = _context.GetFnDef(_tokens.Current);
-                    EatToken(TokenType.FnCall);
-                    var parameters = fnDef.FormalParams.Select(p => ParseExpr());
-
-                    node = new FnCallAST(fnDef.FName, parameters);
-                    break;
-
                 case TokenType.LParen:
-                    EatToken(TokenType.LParen);
+                    AcceptToken(TokenType.LParen);
                     node = ParseExpr();
-                    EatToken(TokenType.RParen);
+                    AcceptToken(TokenType.RParen);
                     break;
             }
 
@@ -230,24 +239,17 @@ namespace InteractiveInterpreter
 
     abstract class AST
     {
-        private Evaluator _visitor;
-
         public string Operator { get; protected set; }
         public List<AST> Children { get; } = new List<AST>();
 
         public string Value { get; set; }
-
-        public void AcceptVisitor(Evaluator visitor)
-        {
-            _visitor = visitor;
-        }
     }
 
     class FnDefAST : AST
     {
         public FnDefAST(string fName, List<string> formalParams, BinaryOpAST body)
         {
-            FName = fName;
+            FName = Value = fName;
             FormalParams = formalParams;
             Body = body;
         }
@@ -263,7 +265,7 @@ namespace InteractiveInterpreter
     {
         public FnCallAST(string fName, IEnumerable<AST> parameters)
         {
-            Operator = fName;
+            Operator = Value = fName;
             Children.AddRange(parameters);
         }
     }
@@ -294,98 +296,153 @@ namespace InteractiveInterpreter
         }
     }
 
-    class Context
+    class Context<TOut>
     {
-        private readonly Dictionary<string, FnDefAST> _fnDefs = new Dictionary<string, FnDefAST>();
-        private readonly Dictionary<string, double> _vars = new Dictionary<string, double>();
+        private readonly Dictionary<string, TOut> _defs = new Dictionary<string, TOut>();
 
-        public void AddFnDef(string fName, FnDefAST fnDef)
+        public void AddValue(string name, TOut def)
         {
-            if (_vars.ContainsKey(fName))
-                throw new Exception($"Function {fName} is already defined as a variable");
-
-            _fnDefs[fName] = fnDef;
+            _defs[name] = def;
         }
 
-        public void AddVar(string id, double val)
+        public TOut GetValue(string name)
         {
-            if (_fnDefs.ContainsKey(id))
-                throw new Exception($"Variable {id} already defined as a function");
+            if (_defs.TryGetValue(name, out var def))
+                return def;
 
-            _vars[id] = val;
-        }
-
-        public bool IsFnDef(string id)
-        {
-            return _fnDefs.ContainsKey(id);
-        }
-
-        public FnDefAST GetFnDef(string fName)
-        {
-            if (_fnDefs.TryGetValue(fName, out var fnDef))
-                return fnDef;
-
-            throw new Exception($"Function {fName} is not defined");
-        }
-
-        public double GetVar(string id)
-        {
-            if (_vars.TryGetValue(id, out var val))
-                return val;
-
-            throw new Exception($"Variable {id} is not assigned");
+            return default;
         }
     }
 
-     class Evaluator
-     {
-         private readonly Context _context;
+    class ParserContext : Context<AST>
+    {
+        public void AddDef(string name, IdentifierAST def)
+        {
+            if (base.GetValue(name) is FnDefAST fnDef)
+                throw new Exception($"Variable {name} already defined as a function");
 
-         public Evaluator(Context context)
-         {
-             _context = context;
-         }
+            base.AddValue(name, def);
+        }
 
-         public double Evaluate(AST tree)
-         {
-             return 0;
-         }
+        public void AddDef(string name, FnDefAST def)
+        {
+            if (base.GetValue(name) is IdentifierAST idDef)
+                throw new Exception($"Function {name} already defined as a variable");
 
-         public double Evaluate(NumberAST ast)
-         {
-             return double.Parse(ast.Value);
-         }
+            base.AddValue(name, def);
+        }
 
-         public double Evaluate(IdentifierAST ast)
-         {
-             return _context.GetVar(ast.Value);
-         }
+        public T GetDef<T>(string name) where T : AST
+        {
+            var def = base.GetValue(name);
 
-         public double Evaluate(BinaryOpAST ast)
-         {
-             if (ast.Operator == "=")
-             {
-                 var retVal = Evaluate(ast.Children[1]);
-                 _context.AddVar(ast.Children[0].Value, retVal);
+            if (def == null)
+            {
+                var msg = typeof(T) == typeof(FnDefAST)
+                    ? $"Function {name} is not defined"
+                    : $"Variable {name} is not defined";
 
-                 return retVal;
-             }
+                throw new Exception(msg);
+            }
 
-             return ast.Operator switch
-             {
-                 "+" => Evaluate(ast.Children[0]) + Evaluate(ast.Children[1]),
-                 "-" => Evaluate(ast.Children[0]) - Evaluate(ast.Children[1]),
-                 "*" => Evaluate(ast.Children[0]) * Evaluate(ast.Children[1]),
-                 "/" => Evaluate(ast.Children[0]) / Evaluate(ast.Children[1]),
-                 "%" => Evaluate(ast.Children[0]) % Evaluate(ast.Children[1]),
-                 _ => throw new Exception($"Evaluation internal exception: unknown operator {ast.Operator}")
-             };
-         }
+            return (T) def;
+        }
 
-         public double Evaluate(FnCallAST ast)
-         {
-             var fnDef = _context.GetFnDef(ast.Value);
-             var ctxClone = _context.Clone();
-         }
-     }
+        public bool IsFnDef(string name)
+        {
+            return base.GetValue(name)?.GetType() == typeof(FnDefAST);
+        }
+    }
+
+    class EvaluationContext : Context<double?>, IDisposable
+    {
+        private readonly EvaluationContext _parentContext;
+
+        public EvaluationContext()
+        {
+        }
+
+        private EvaluationContext(EvaluationContext parentContext)
+        {
+            _parentContext = parentContext;
+        }
+
+        public double GetVar(string name)
+        {
+            var def = base.GetValue(name) ?? _parentContext?.GetValue(name);
+
+            if (def == null)
+                throw new Exception("Variable {name} is not assigned");
+
+            return def.Value;
+        }
+
+        public EvaluationContext CreateDisposableContext()
+        {
+            return new EvaluationContext(this);
+        }
+
+        public double Evaluate(AST tree, ParserContext parserCtx)
+        {
+            var nodeType = tree.GetType();
+
+            if (nodeType == typeof(NumberAST))
+                return Evaluate((NumberAST)tree, parserCtx);
+
+            if (nodeType == typeof(IdentifierAST))
+                return Evaluate((IdentifierAST)tree, parserCtx);
+
+            if (nodeType == typeof(BinaryOpAST))
+                return Evaluate((BinaryOpAST)tree, parserCtx);
+
+            if (nodeType == typeof(FnCallAST))
+                return Evaluate((FnCallAST)tree, parserCtx);
+
+            throw new Exception("Expression does not conform to given grammar");
+        }
+
+        public double Evaluate(NumberAST ast, ParserContext parserCtx)
+        {
+            return double.Parse(ast.Value);
+        }
+
+        public double Evaluate(IdentifierAST ast, ParserContext parserCtx)
+        {
+            return GetVar(ast.Value);
+        }
+
+        public double Evaluate(BinaryOpAST ast, ParserContext parserCtx)
+        {
+            if (ast.Operator == "=")
+            {
+                var retVal = Evaluate(ast.Children[1], parserCtx);
+                AddValue(ast.Children[0].Value, retVal);
+
+                return retVal;
+            }
+
+            return ast.Operator switch
+            {
+                "+" => Evaluate(ast.Children[0], parserCtx) + Evaluate(ast.Children[1], parserCtx),
+                "-" => Evaluate(ast.Children[0], parserCtx) - Evaluate(ast.Children[1], parserCtx),
+                "*" => Evaluate(ast.Children[0], parserCtx) * Evaluate(ast.Children[1], parserCtx),
+                "/" => Evaluate(ast.Children[0], parserCtx) / Evaluate(ast.Children[1], parserCtx),
+                "%" => Evaluate(ast.Children[0], parserCtx) % Evaluate(ast.Children[1], parserCtx),
+                _ => throw new Exception($"Evaluation internal exception: unknown operator {ast.Operator}")
+            };
+        }
+
+        public double Evaluate(FnCallAST ast, ParserContext parserCtx)
+        {
+            var fnDef = parserCtx.GetDef<FnDefAST>(ast.Value);
+            using var dc = CreateDisposableContext();
+
+            fnDef.FormalParams.Zip(ast.Children).ToList().ForEach(np => dc.AddValue(np.First, Evaluate(np.Second, parserCtx)));
+            return dc.Evaluate(fnDef.Body, parserCtx);
+        }
+
+        public void Dispose()
+        {
+        }
+    }
 }
