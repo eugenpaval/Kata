@@ -12,4 +12,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Skyscrapers.cs" />
+  </ItemGroup>
+
 </Project>

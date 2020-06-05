@@ -55,5 +55,19 @@ namespace Kata
             check(ref interpret, "fn avg => 0", null);
             check(ref interpret, "avg = 5", null);
         }
+
+        [Test]
+        public void BuildAST1()
+        {
+            var interpreter = new Interpreter();
+            interpreter.input("fn avg x y => (x+y)/2");
+        }
+
+        [Test]
+        public void BuildAST2()
+        {
+            var interpreter = new Interpreter();
+            interpreter.input("(a-(b-(c-1)*2)*3)");
+        }
     }
 }

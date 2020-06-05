@@ -27,7 +27,7 @@ namespace KataTests
                 new[] {3, 2, 5, 4, 6, 1}
             };
 
-            var actual = Random.Skyscrapers.SolvePuzzle(clues);
+            var actual = Kata.Skyscrapers.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
@@ -52,7 +52,7 @@ namespace KataTests
                 new[] {3, 4, 2, 5, 1, 6}
             };
 
-            var actual = Random.Skyscrapers.SolvePuzzle(clues);
+            var actual = Kata.Skyscrapers.SolvePuzzle(clues);
             CollectionAssert.AreEqual(expected, actual);
         }
 
@@ -134,14 +134,14 @@ namespace KataTests
         [Test]
         public void Test_1_Medium()
         {
-            var actual = Random.Skyscrapers.SolvePuzzle(clues[0]);
+            var actual = Kata.Skyscrapers.SolvePuzzle(clues[0]);
             CollectionAssert.AreEqual(expected[0], actual);
         }
 
         [Test]
         public void Test_2_VeryHard()
         {
-            var actual = Random.Skyscrapers.SolvePuzzle(clues[1]);
+            var actual = Kata.Skyscrapers.SolvePuzzle(clues[1]);
             CollectionAssert.AreEqual(expected[1], actual);
         }
     }
