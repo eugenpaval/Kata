@@ -10,8 +10,19 @@
         private static void check(ref Interpreter interpret, string inp, double? res)
         {
             double? result = -9999.99;
-            try { result = interpret.input(inp); } catch (Exception) { result = null; }
-            if (result != res) Assert.Fail("input(\"" + inp + "\") == <" + res + "> and not <" + result + "> => wrong solution, aborted!"); else Console.WriteLine("input(\"" + inp + "\") == <" + res + "> was ok");
+            try
+            {
+                result = interpret.input(inp);
+            }
+            catch (Exception)
+            {
+                result = null;
+            }
+
+            if (result != res) 
+                Assert.Fail("input(\"" + inp + "\") == <" + res + "> and not <" + result + "> => wrong solution, aborted!"); 
+            else 
+                Console.WriteLine("input(\"" + inp + "\") == <" + res + "> was ok");
         }
 
         [Test]

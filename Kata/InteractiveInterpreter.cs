@@ -7,7 +7,8 @@ namespace InteractiveInterpreter
 {
     public class Interpreter
     {
-        private static readonly Parser _parser = new Parser();
+        private readonly Parser _parser = new Parser();
+        private readonly EvaluationContext _evalCtx = new EvaluationContext();
 
         public double? input(string input)
         {
@@ -19,7 +20,7 @@ namespace InteractiveInterpreter
 
             try
             {
-                return new EvaluationContext().Evaluate(ast, _parser.Context);
+                return _evalCtx.Evaluate(ast, _parser.Context);
             }
             catch (Exception ex)
             {
@@ -58,9 +59,10 @@ namespace InteractiveInterpreter
         Assign,
         LParen,
         RParen,
+        EOF
     }
 
-    static class TokenExtensions
+    class Lexer
     {
         private static readonly Dictionary<string, TokenType> _opTokenToType = new Dictionary<string, TokenType>
         {
@@ -75,7 +77,10 @@ namespace InteractiveInterpreter
             ["=>"] = TokenType.FnBodyDef
         };
 
-        public static TokenType GetTokenType(this string token)
+        private readonly IEnumerator<string> _tokens;
+        private bool _eof;
+
+        public static TokenType GetTokenType(string token)
         {
             if (double.TryParse(token, out var val))
                 return TokenType.Number;
@@ -88,11 +93,44 @@ namespace InteractiveInterpreter
 
             return TokenType.Unknown;
         }
+
+        public Lexer(IEnumerable<string> tokens)
+        {
+            _tokens = tokens.GetEnumerator();
+            _eof = _tokens.MoveNext();
+
+            CurrentToken = new Token(_tokens.Current, _eof ? TokenType.EOF : GetTokenType(_tokens.Current));
+        }
+
+        public Token CurrentToken { get; private set; }
+
+        public void AcceptToken(TokenType tokenType)
+        {
+            if (CurrentToken.Type == tokenType)
+            {
+                _eof = _tokens.MoveNext();
+                CurrentToken = new Token(_tokens.Current, _eof ? TokenType.EOF : GetTokenType(_tokens.Current));
+            }
+            else
+                throw new Exception("Invalid syntax error - unexpected token type");
+        }
+    }
+
+    class Token
+    {
+        public Token(string value, TokenType tokenType) => (Value, Type) = (value, tokenType);
+
+        public string Value { get; }
+        public TokenType Type { get; }
     }
 
     class Parser
     {
-        private IEnumerator<string> _tokens;
+        private Lexer _lexer;
+        private static readonly TokenType[] _allowedOpsAfterFnCall =
+        {
+            TokenType.Add, TokenType.Sub, TokenType.Mul, TokenType.Div, TokenType.Mod, TokenType.EOF
+        };
 
         public Parser()
         {
@@ -103,42 +141,34 @@ namespace InteractiveInterpreter
 
         public AST Parse(IEnumerable<string> tokens)
         {
-            _tokens = tokens.GetEnumerator();
-            _tokens.MoveNext();
+            _lexer = new Lexer(tokens);
 
-            if (_tokens.Current == null)
+            if (_lexer.CurrentToken.Type == TokenType.EOF)
                 return null;
 
-            if (_tokens.Current.ToLower() == "fn")
+            if (_lexer.CurrentToken.Value.ToLower() == "fn")
             {
-                AcceptToken(TokenType.Identifier);
+                _lexer.AcceptToken(TokenType.Identifier);
                 return ParseFnDef();
             }
-            return ParseExpr();
-        }
 
-        private void AcceptToken(TokenType ttype)
-        {
-            if (_tokens.Current.GetTokenType() == ttype)
-                _tokens.MoveNext();
-            else
-                throw new Exception("Invalid syntax error - unexpected token type");
+            return ParseExpr();
         }
 
         private AST ParseFnDef()
         {
-            var fName = _tokens.Current;
-            AcceptToken(TokenType.Identifier);
+            var fName = _lexer.CurrentToken.Value;
+            _lexer.AcceptToken(TokenType.Identifier);
 
             var formalParams = new List<string>();
 
-            while (_tokens.Current.GetTokenType() == TokenType.Identifier)
+            while (_lexer.CurrentToken.Type == TokenType.Identifier)
             {
-                formalParams.Add(_tokens.Current);
-                AcceptToken(TokenType.Identifier);
+                formalParams.Add(_lexer.CurrentToken.Value);
+                _lexer.AcceptToken(TokenType.Identifier);
             }
 
-            AcceptToken(TokenType.FnBodyDef);
+            _lexer.AcceptToken(TokenType.FnBodyDef);
 
             var body = ParseExpr(formalParams) as BinaryOpAST;
             var fnDef = new FnDefAST(fName, formalParams, body);
@@ -151,16 +181,15 @@ namespace InteractiveInterpreter
         {
             // expr ::= term | (+\-) factor
             var term = ParseTerm(ns);
-            var tokenType = _tokens.Current.GetTokenType();
+            var token = _lexer.CurrentToken;
 
-            while (tokenType == TokenType.Add || tokenType == TokenType.Sub)
+            while (token.Type == TokenType.Add || token.Type == TokenType.Sub)
             {
-                var token = _tokens.Current;
-                AcceptToken(tokenType);
+                _lexer.AcceptToken(token.Type);
 
                 var otherTerm = ParseTerm(ns);
-                term = new BinaryOpAST(term, token, otherTerm);
-                tokenType = _tokens.Current.GetTokenType();
+                term = new BinaryOpAST(term, token.Value, otherTerm);
+                token = _lexer.CurrentToken;
             }
 
             return term;
@@ -170,16 +199,15 @@ namespace InteractiveInterpreter
         {
             // term ::= factor | (*\/|%) factor
             var factor = ParseFactor(ns);
-            var tokenType = _tokens.Current.GetTokenType();
+            var token = _lexer.CurrentToken;
 
-            while (tokenType == TokenType.Mul || tokenType == TokenType.Div || tokenType == TokenType.Mod)
+            while (token.Type == TokenType.Mul || token.Type == TokenType.Div || token.Type == TokenType.Mod)
             {
-                var token = _tokens.Current;
-                AcceptToken(tokenType);
+                _lexer.AcceptToken(token.Type);
 
                 var otherFactor = ParseFactor(ns);
-                factor = new BinaryOpAST(factor, token, otherFactor);
-                tokenType = _tokens.Current.GetTokenType();
+                factor = new BinaryOpAST(factor, token.Value, otherFactor);
+                token = _lexer.CurrentToken;
             }
 
             return factor;
@@ -188,50 +216,62 @@ namespace InteractiveInterpreter
         private AST ParseFactor(List<string> ns)
         {
             // factor ::= number | identifier | assignment | '('expr')' | fn-call
-            var tokenType = _tokens.Current.GetTokenType();
             AST node = null;
 
-            switch (tokenType)
+            switch (_lexer.CurrentToken.Type)
             {
                 case TokenType.Number:
-                    node = new NumberAST(_tokens.Current);
-                    AcceptToken(TokenType.Number);
+                    node = new NumberAST(_lexer.CurrentToken.Value);
+                    _lexer.AcceptToken(TokenType.Number);
                     break;
 
                 case TokenType.Identifier:
-                    if (Context.IsFnDef(_tokens.Current))
-                    {
-                        var fnDef = Context.GetDef<FnDefAST>(_tokens.Current);
-                        AcceptToken(TokenType.Identifier);
-                        
-                        var parameters = fnDef.FormalParams.Select(p => ParseExpr());
-                        node = new FnCallAST(fnDef.FName, parameters);
-                    }
-                    else
-                    {
-                        if (ns != null && !ns.Contains(_tokens.Current))
-                            throw new Exception($"Parameter {_tokens.Current} is not defined");
-
-                        node = new IdentifierAST(_tokens.Current);
-                        AcceptToken(TokenType.Identifier);
-                    }
-
-                    tokenType = _tokens.Current.GetTokenType();
-                    while (tokenType == TokenType.Assign)
-                    {
-                        AcceptToken(TokenType.Assign);
-                        var expr = ParseExpr();
-                        node = new BinaryOpAST(node, "=", expr);
-                        tokenType = _tokens.Current.GetTokenType();
-                    }
+                    node = Context.IsFnDef(_lexer.CurrentToken.Value) ? ParseFnCall() : ParseIdentifierRef(ns);
+                    node = ParseAssignment(node);
                     break;
 
                 case TokenType.LParen:
-                    AcceptToken(TokenType.LParen);
+                    _lexer.AcceptToken(TokenType.LParen);
                     node = ParseExpr();
-                    AcceptToken(TokenType.RParen);
+                    _lexer.AcceptToken(TokenType.RParen);
                     break;
             }
+
+            return node;
+        }
+
+        private AST ParseAssignment(AST node)
+        {
+            while (_lexer.CurrentToken.Type == TokenType.Assign)
+            {
+                _lexer.AcceptToken(TokenType.Assign);
+                var expr = ParseExpr();
+                node = new BinaryOpAST(node, "=", expr);
+            }
+
+            return node;
+        }
+
+        private AST ParseIdentifierRef(List<string> ns)
+        {
+            if (ns != null && !ns.Contains(_lexer.CurrentToken.Value))
+                throw new Exception($"Parameter {_lexer.CurrentToken.Value} is not defined");
+
+            var node = new IdentifierAST(_lexer.CurrentToken.Value);
+            _lexer.AcceptToken(TokenType.Identifier);
+            return node;
+        }
+
+        private AST ParseFnCall()
+        {
+            var fnDef = Context.GetDef<FnDefAST>(_lexer.CurrentToken.Value);
+            _lexer.AcceptToken(TokenType.Identifier);
+
+            var parameters = fnDef.FormalParams.Select(p => ParseExpr());
+            var node = new FnCallAST(fnDef.FName, parameters);
+
+            if (!_allowedOpsAfterFnCall.Contains(_lexer.CurrentToken.Type))
+                throw new Exception($"Unexpected token after {fnDef.FName}");
 
             return node;
         }
@@ -372,7 +412,7 @@ namespace InteractiveInterpreter
             var def = base.GetValue(name) ?? _parentContext?.GetValue(name);
 
             if (def == null)
-                throw new Exception("Variable {name} is not assigned");
+                throw new Exception($"Variable {name} is not assigned");
 
             return def.Value;
         }
@@ -435,6 +475,10 @@ namespace InteractiveInterpreter
         public double Evaluate(FnCallAST ast, ParserContext parserCtx)
         {
             var fnDef = parserCtx.GetDef<FnDefAST>(ast.Value);
+            
+            if (fnDef.FormalParams.Count != ast.Children.Count)
+                throw new Exception($"Function {fnDef.FName} has {fnDef.FormalParams.Count} formal parameters but it is called with {ast.Children.Count} actual parameters");
+
             using var dc = CreateDisposableContext();
 
             fnDef.FormalParams.Zip(ast.Children).ToList().ForEach(np => dc.AddValue(np.First, Evaluate(np.Second, parserCtx)));
