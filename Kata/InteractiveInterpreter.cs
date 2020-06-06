@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace InteractiveInterpreter
+namespace InterpreterKata
 {
     public class Interpreter
     {
@@ -33,7 +33,6 @@ namespace InteractiveInterpreter
 
         private static IEnumerable<string> Tokenize(string input)
         {
-            input += ")";
             var tokens = new List<string>();
             var rgxMain = new Regex("=>|[-+*/%=\\(\\)]|[A-Za-z_][A-Za-z0-9_]*|[0-9]*(\\.?[0-9]+)");
             var matches = rgxMain.Matches(input);
@@ -97,7 +96,7 @@ namespace InteractiveInterpreter
         public Lexer(IEnumerable<string> tokens)
         {
             _tokens = tokens.GetEnumerator();
-            _eof = _tokens.MoveNext();
+            _eof = !_tokens.MoveNext();
 
             CurrentToken = new Token(_tokens.Current, _eof ? TokenType.EOF : GetTokenType(_tokens.Current));
         }
@@ -108,11 +107,11 @@ namespace InteractiveInterpreter
         {
             if (CurrentToken.Type == tokenType)
             {
-                _eof = _tokens.MoveNext();
+                _eof = !_tokens.MoveNext();
                 CurrentToken = new Token(_tokens.Current, _eof ? TokenType.EOF : GetTokenType(_tokens.Current));
             }
             else
-                throw new Exception("Invalid syntax error - unexpected token type");
+                throw new Exception($"Invalid syntax error - unexpected token {CurrentToken.Value} , {CurrentToken.Type}");
         }
     }
 
@@ -146,17 +145,14 @@ namespace InteractiveInterpreter
             if (_lexer.CurrentToken.Type == TokenType.EOF)
                 return null;
 
-            if (_lexer.CurrentToken.Value.ToLower() == "fn")
-            {
-                _lexer.AcceptToken(TokenType.Identifier);
-                return ParseFnDef();
-            }
-
-            return ParseExpr();
+            var tree = _lexer.CurrentToken.Value.ToLower() == "fn" ? ParseFnDef() : ParseExpr();
+            _lexer.AcceptToken(TokenType.EOF);
+            return tree;
         }
 
         private AST ParseFnDef()
         {
+            _lexer.AcceptToken(TokenType.Identifier);
             var fName = _lexer.CurrentToken.Value;
             _lexer.AcceptToken(TokenType.Identifier);
 
@@ -170,7 +166,7 @@ namespace InteractiveInterpreter
 
             _lexer.AcceptToken(TokenType.FnBodyDef);
 
-            var body = ParseExpr(formalParams) as BinaryOpAST;
+            var body = ParseExpr(formalParams);
             var fnDef = new FnDefAST(fName, formalParams, body);
             
             Context.AddDef(fName, fnDef);
@@ -244,6 +240,9 @@ namespace InteractiveInterpreter
         {
             while (_lexer.CurrentToken.Type == TokenType.Assign)
             {
+                if (node.GetType() == typeof(FnCallAST))
+                    throw new Exception($"Syntax error - function {node.Value} cannot be assigned to");
+
                 _lexer.AcceptToken(TokenType.Assign);
                 var expr = ParseExpr();
                 node = new BinaryOpAST(node, "=", expr);
@@ -268,10 +267,10 @@ namespace InteractiveInterpreter
             _lexer.AcceptToken(TokenType.Identifier);
 
             var parameters = fnDef.FormalParams.Select(p => ParseExpr());
-            var node = new FnCallAST(fnDef.FName, parameters);
+            var node = new FnCallAST(fnDef.Value, parameters);
 
-            if (!_allowedOpsAfterFnCall.Contains(_lexer.CurrentToken.Type))
-                throw new Exception($"Unexpected token after {fnDef.FName}");
+            //if (!_allowedOpsAfterFnCall.Contains(_lexer.CurrentToken.Type))
+            //    throw new Exception($"Unexpected token after {fnDef.Value}");
 
             return node;
         }
@@ -287,18 +286,16 @@ namespace InteractiveInterpreter
 
     class FnDefAST : AST
     {
-        public FnDefAST(string fName, List<string> formalParams, BinaryOpAST body)
+        public FnDefAST(string fName, List<string> formalParams, AST body)
         {
-            FName = Value = fName;
+            Value = Operator = fName;
             FormalParams = formalParams;
             Body = body;
         }
 
-        public BinaryOpAST Body { get; }
+        public AST Body { get; }
 
         public List<string> FormalParams { get; }
-
-        public string FName { get; }
     }
 
     class FnCallAST : AST
@@ -477,7 +474,7 @@ namespace InteractiveInterpreter
             var fnDef = parserCtx.GetDef<FnDefAST>(ast.Value);
             
             if (fnDef.FormalParams.Count != ast.Children.Count)
-                throw new Exception($"Function {fnDef.FName} has {fnDef.FormalParams.Count} formal parameters but it is called with {ast.Children.Count} actual parameters");
+                throw new Exception($"Function {fnDef.Value} has {fnDef.FormalParams.Count} formal parameters but it is called with {ast.Children.Count} actual parameters");
 
             using var dc = CreateDisposableContext();
 

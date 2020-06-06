@@ -1,8 +1,7 @@
-﻿namespace InteractiveInterpreter
+﻿namespace InterpreterKata
 {
     using NUnit.Framework;
     using System;
-    using System.Collections.Generic;
 
     [TestFixture]
     public class InterpreterTests
@@ -123,6 +122,30 @@
         {
             var interpreter = new Interpreter();
             Assert.Catch<Exception>(() => interpreter.input("fn F x => x + a"));
+        }
+
+        [Test]
+        public void Eval6()
+        {
+            var interpreter = new Interpreter();
+            Assert.Catch<Exception>(() => interpreter.input("1 2"));
+        }
+
+        [Test]
+        public void Eval7()
+        {
+            var interpreter = new Interpreter();
+            interpreter.input("fn f => 1");
+            Assert.AreEqual(interpreter.input("f"), 1);
+        }
+
+        [Test]
+        public void Eval8()
+        {
+            var interpreter = new Interpreter();
+            interpreter.input("fn echo x => x");
+            interpreter.input("fn avg x y => (x+y)/2");
+            Assert.AreEqual(interpreter.input("avg echo 4 echo 2"), 3);
         }
     }
 }
